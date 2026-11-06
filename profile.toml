@@ -1,10 +1,13 @@
 # What the engine looks for. No contact details belong here (this repo is public);
 # the resume text goes in profile/resume.txt, which git ignores.
+#
+# Current target (resume of July 2026): pharma / health marketing, communications
+# and business development, entry level, Toronto first.
 
 [search]
 resume = "profile/resume.txt"
 companies = "companies.toml"
-sectors = ["life-sciences", "health", "tech"]  # sectors from companies.toml to pull
+sectors = ["pharma-commercial", "life-sciences", "health", "tech"]  # from companies.toml
 use_remotive = true    # remote-only aggregator; free API allows ~4 fetches a day
 use_adzuna = true      # only runs when ADZUNA_APP_ID and ADZUNA_APP_KEY are set
 min_score = 30         # 0-100; jobs below this are dropped
@@ -16,35 +19,37 @@ allow_rest_of_canada = true      # other Canadian cities, scored a bit lower
 allow_remote = true              # remote roles open to Canada
 
 [target]
-# Job titles you'd apply to. Partial matches count ("research associate" matches
-# "Research Associate, Antibody Discovery").
+# Job titles you'd apply to. Partial matches count ("marketing associate" matches
+# "Marketing Associate, Oncology"). Intern / co-op / new-grad is handled by `levels`.
 titles = [
-  "research assistant", "research associate", "research intern", "research coordinator",
-  "lab assistant", "laboratory technician", "laboratory assistant", "research technician",
-  "clinical research assistant", "clinical research coordinator", "clinical trial assistant",
-  "quality control associate", "quality assurance associate", "regulatory affairs associate",
-  "process development associate", "medical affairs", "scientific affairs",
-  "qc analyst", "quality control analyst", "medical writer", "scientific writer",
-  "pharmacovigilance associate", "clinical data", "in vivo technician",
-  "associate consultant", "associate product manager", "product analyst", "product intern",
-  "pharmacy assistant", "health outreach",
+  "marketing associate", "marketing coordinator", "marketing specialist", "marketing intern",
+  "marketing analyst", "brand associate", "associate brand manager", "product marketing",
+  "healthcare marketing", "marketing communications",
+  "communications associate", "communications coordinator", "communications specialist",
+  "communications intern", "medical communications", "scientific communications",
+  "business development associate", "business development representative",
+  "business development analyst", "business development intern", "partnerships associate",
+  "commercial analyst", "commercial operations", "market access", "market research analyst",
+  "health economics", "outcomes research", "account coordinator", "associate consultant",
+  "sales operations", "client success coordinator",
 ]
-# (Intern / co-op / new-grad is handled by `levels` below, so it isn't a title here.)
 # Skills and topics from your background. Each one found in a posting raises its score.
 skills = [
-  "biochemistry", "immunology", "molecular biology", "cell culture", "antibody", "assay",
-  "pharmacokinetics", "drug delivery", "formulation", "bioavailability", "stability",
-  "GLP-1", "oral formulation", "drug development", "clinical study", "clinical trials",
-  "preventive healthcare", "public health", "health equity", "data analysis",
-  "outreach", "communications", "product management", "German",
+  "marketing", "communications", "business development", "market research", "brand",
+  "go-to-market", "partnerships", "outreach", "stakeholder", "budgeting", "financial planning",
+  "pharmaceutical", "life sciences", "drug development", "stability testing",
+  "formulation", "GLP-1", "immunology", "molecular biology", "market access", "commercial",
+  "EMEA", "German", "Mandarin",
 ]
+# ("Europe" and "manufacturing" are left out on purpose: they show up in company
+# boilerplate, so they matched almost everything.)
 levels = ["intern", "entry", "mid"]   # intern | entry | mid | senior; senior roles are dropped
 max_years_experience = 2              # postings asking for more are scored down, not dropped
 # Titles containing any of these are dropped outright.
 exclude_title_words = [
   "software", "developer", "devops", "full-stack", "full stack", "backend", "frontend",
-  "android", "ios", "sre", "site reliability", "machine learning engineer", "data engineer",
-  "security engineer", "solutions architect", "account executive", "sales representative",
-  "pharmacist", "physician", "nurse practitioner", "registered nurse",
-  "registered pharmacy technician",
+  "android", "ios", "sre", "site reliability", "machine learning", "data engineer", "engineer",
+  "solutions architect", "account executive", "pharmacist", "physician", "nurse practitioner",
+  "registered nurse", "registered pharmacy technician", "medical director",
+  "data scientist", "counsel", "designer", "product design",
 ]

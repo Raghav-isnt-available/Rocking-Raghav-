@@ -3,6 +3,25 @@
 # `python -m jobfinder check-companies` verifies every slug still works.
 # Every slug below was confirmed to return live jobs on 2026-11-06.
 
+# --- Pharma marketing, medical communications, market access -------------
+[[company]]
+name = "Precision Medicine Group"
+ats = "greenhouse"
+slug = "precisionmedicinegroup"
+sector = "pharma-commercial"
+
+[[company]]
+name = "Real Chemistry"
+ats = "greenhouse"
+slug = "realchemistry"
+sector = "pharma-commercial"
+
+[[company]]
+name = "Avalere Health"
+ats = "lever"
+slug = "avalerehealth"
+sector = "pharma-commercial"
+
 # --- Life sciences, pharma, biotech ---------------------------------------
 [[company]]
 name = "AbCellera"

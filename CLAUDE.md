@@ -7,10 +7,13 @@ job matches": run the search and republish the results page.
 
 ## Refreshing results
 
-1. If `profile/resume.txt` is missing (fresh container), rebuild it from Google Drive:
-   search Drive for the file titled `Resume Official.pdf`, read it, and write its
-   text to `profile/resume.txt`. Leave out the phone/email line. If the owner has a
-   newer resume, use that and say which file you used.
+1. If `profile/resume.txt` is missing (fresh container), rebuild it from the owner's
+   newest resume and write its text there, leaving out the phone/email line. The
+   current one is `Resume_Official_7-21.pdf` (July 2026; targets pharma marketing,
+   communications and business development). Search Google Drive for the newest file
+   with "Resume" in the title. `Resume Official.pdf` from January 2025 is outdated
+   (second-year, lab focus): if that's the only one there, ask the owner to upload the
+   current resume instead of ranking against the old one.
 2. `python3 -m jobfinder search` (about 15 s). Writes `out/report.html` and `out/jobs.json`.
 3. Publish `out/report.html` to the existing artifact
    https://claude.ai/artifact/Cu7zSqmMAt1koLzFpziY16 (read it first, then publish with
