@@ -1,0 +1,199 @@
+# Company job boards to pull from. Each entry needs `ats` (greenhouse | lever | ashby)
+# and `slug` (the name in the board URL, e.g. jobs.lever.co/<slug>).
+# `python -m jobfinder check-companies` verifies every slug still works.
+# Every slug below was confirmed to return live jobs on 2026-11-06.
+
+# --- Life sciences, pharma, biotech ---------------------------------------
+[[company]]
+name = "AbCellera"
+ats = "greenhouse"
+slug = "abcellera"
+sector = "life-sciences"
+
+[[company]]
+name = "Aspect Biosystems"
+ats = "greenhouse"
+slug = "aspectbiosystems"
+sector = "life-sciences"
+
+[[company]]
+name = "Xenon Pharmaceuticals"
+ats = "ashby"
+slug = "xenon"
+sector = "life-sciences"
+
+[[company]]
+name = "Veeva Systems"
+ats = "lever"
+slug = "veeva"
+sector = "life-sciences"
+
+[[company]]
+name = "Recursion"
+ats = "greenhouse"
+slug = "recursionpharmaceuticals"
+sector = "life-sciences"
+
+[[company]]
+name = "Benchling"
+ats = "ashby"
+slug = "benchling"
+sector = "life-sciences"
+
+[[company]]
+name = "Dotmatics"
+ats = "greenhouse"
+slug = "dotmatics"
+sector = "life-sciences"
+
+# --- Health care, pharmacy, health tech -----------------------------------
+[[company]]
+name = "Felix Health"
+ats = "ashby"
+slug = "felix"
+sector = "health"
+
+[[company]]
+name = "Mednow"
+ats = "lever"
+slug = "mednow"
+sector = "health"
+
+[[company]]
+name = "Maple"
+ats = "lever"
+slug = "getmaple"
+sector = "health"
+
+[[company]]
+name = "Jane"
+ats = "ashby"
+slug = "jane"
+sector = "health"
+
+[[company]]
+name = "AlayaCare"
+ats = "greenhouse"
+slug = "alayacare"
+sector = "health"
+
+[[company]]
+name = "Hinge Health"
+ats = "ashby"
+slug = "hinge-health"
+sector = "health"
+
+[[company]]
+name = "Sword Health"
+ats = "greenhouse"
+slug = "swordhealth"
+sector = "health"
+
+# --- Canadian tech & fintech (product, ops, analyst, new-grad roles) ------
+[[company]]
+name = "Wealthsimple"
+ats = "ashby"
+slug = "wealthsimple"
+sector = "tech"
+
+[[company]]
+name = "KOHO"
+ats = "ashby"
+slug = "koho"
+sector = "tech"
+
+[[company]]
+name = "Neo Financial"
+ats = "ashby"
+slug = "neofinancial"
+sector = "tech"
+
+[[company]]
+name = "Cohere"
+ats = "ashby"
+slug = "cohere"
+sector = "tech"
+
+[[company]]
+name = "1Password"
+ats = "ashby"
+slug = "1password"
+sector = "tech"
+
+[[company]]
+name = "Jobber"
+ats = "ashby"
+slug = "jobber"
+sector = "tech"
+
+[[company]]
+name = "Lightspeed"
+ats = "ashby"
+slug = "lightspeedhq"
+sector = "tech"
+
+[[company]]
+name = "Hopper"
+ats = "ashby"
+slug = "hopper"
+sector = "tech"
+
+[[company]]
+name = "Thinkific"
+ats = "ashby"
+slug = "thinkific"
+sector = "tech"
+
+[[company]]
+name = "Faire"
+ats = "greenhouse"
+slug = "faire"
+sector = "tech"
+
+[[company]]
+name = "Hootsuite"
+ats = "greenhouse"
+slug = "hootsuite"
+sector = "tech"
+
+[[company]]
+name = "Instacart"
+ats = "greenhouse"
+slug = "instacart"
+sector = "tech"
+
+[[company]]
+name = "Okta"
+ats = "greenhouse"
+slug = "okta"
+sector = "tech"
+
+[[company]]
+name = "Stripe"
+ats = "greenhouse"
+slug = "stripe"
+sector = "tech"
+
+[[company]]
+name = "Pinterest"
+ats = "greenhouse"
+slug = "pinterest"
+sector = "tech"
+
+[[company]]
+name = "Affirm"
+ats = "greenhouse"
+slug = "affirm"
+sector = "tech"
+
+[[company]]
+name = "Databricks"
+ats = "greenhouse"
+slug = "databricks"
+sector = "tech"
+
+[[company]]
+name = "Amplitude"
+ats = "ashby"
+slug = "amplitude"
+sector = "tech"

@@ -1,0 +1,10 @@
+# Personal data: this repo is public.
+profile/resume.txt
+profile/*.pdf
+.env
+
+# Generated results
+out/
+
+__pycache__/
+*.pyc

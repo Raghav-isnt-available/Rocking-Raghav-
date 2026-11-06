@@ -1,0 +1,50 @@
+# What the engine looks for. No contact details belong here (this repo is public);
+# the resume text goes in profile/resume.txt, which git ignores.
+
+[search]
+resume = "profile/resume.txt"
+companies = "companies.toml"
+sectors = ["life-sciences", "health", "tech"]  # sectors from companies.toml to pull
+use_remotive = true    # remote-only aggregator; free API allows ~4 fetches a day
+use_adzuna = true      # only runs when ADZUNA_APP_ID and ADZUNA_APP_KEY are set
+min_score = 30         # 0-100; jobs below this are dropped
+max_results = 75
+
+[location]
+preferred_cities = ["toronto"]   # plus the rest of the GTA; scores highest
+allow_rest_of_canada = true      # other Canadian cities, scored a bit lower
+allow_remote = true              # remote roles open to Canada
+
+[target]
+# Job titles you'd apply to. Partial matches count ("research associate" matches
+# "Research Associate, Antibody Discovery").
+titles = [
+  "research assistant", "research associate", "research intern", "research coordinator",
+  "lab assistant", "laboratory technician", "laboratory assistant", "research technician",
+  "clinical research assistant", "clinical research coordinator", "clinical trial assistant",
+  "quality control associate", "quality assurance associate", "regulatory affairs associate",
+  "process development associate", "medical affairs", "scientific affairs",
+  "qc analyst", "quality control analyst", "medical writer", "scientific writer",
+  "pharmacovigilance associate", "clinical data", "in vivo technician",
+  "associate consultant", "associate product manager", "product analyst", "product intern",
+  "pharmacy assistant", "health outreach",
+]
+# (Intern / co-op / new-grad is handled by `levels` below, so it isn't a title here.)
+# Skills and topics from your background. Each one found in a posting raises its score.
+skills = [
+  "biochemistry", "immunology", "molecular biology", "cell culture", "antibody", "assay",
+  "pharmacokinetics", "drug delivery", "formulation", "bioavailability", "stability",
+  "GLP-1", "oral formulation", "drug development", "clinical study", "clinical trials",
+  "preventive healthcare", "public health", "health equity", "data analysis",
+  "outreach", "communications", "product management", "German",
+]
+levels = ["intern", "entry", "mid"]   # intern | entry | mid | senior; senior roles are dropped
+max_years_experience = 2              # postings asking for more are scored down, not dropped
+# Titles containing any of these are dropped outright.
+exclude_title_words = [
+  "software", "developer", "devops", "full-stack", "full stack", "backend", "frontend",
+  "android", "ios", "sre", "site reliability", "machine learning engineer", "data engineer",
+  "security engineer", "solutions architect", "account executive", "sales representative",
+  "pharmacist", "physician", "nurse practitioner", "registered nurse",
+  "registered pharmacy technician",
+]
