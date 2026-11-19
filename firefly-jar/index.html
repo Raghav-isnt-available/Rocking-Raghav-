@@ -1,0 +1,489 @@
+<title>Firefly Jar</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap">
+<style>
+/* Layout: full-bleed canvas meadow; a thin HUD strip along the top; centered cards for level breaks.
+   One deliberate look (a summer night), so a single dark palette rather than light/dark themes. */
+:root {
+  --night: #0a0f24;
+  --dusk: #1a2152;
+  --glow: #ffe15c;
+  --glow-soft: #fff4b0;
+  --wasp: #ff6a3d;
+  --ink: #f3f0ff;
+  --muted: #a6add6;
+  --panel: rgba(10, 15, 36, 0.86);
+  --line: rgba(166, 173, 214, 0.25);
+  --display: "Baloo 2", ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--night); color: var(--ink); font: 15px/1.45 var(--body);
+  overflow: hidden; overscroll-behavior: none;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+.hud {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 2; pointer-events: none;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font: 700 clamp(15px, 3.6vw, 20px)/1 var(--display); font-variant-numeric: tabular-nums;
+}
+.hud > div { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pill { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px 6px; }
+.lives { display: flex; gap: 5px; }
+.lives i { width: 10px; height: 10px; border-radius: 50%; background: var(--glow); box-shadow: 0 0 8px var(--glow); }
+.lives i.gone { background: transparent; box-shadow: none; border: 1.5px solid var(--muted); opacity: .5; }
+.time.low { color: var(--wasp); }
+.bar { position: fixed; left: 0; right: 0; z-index: 2; pointer-events: none;
+  top: calc(env(safe-area-inset-top, 0px) + 54px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.bar div { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.bar span { display: block; height: 100%; width: 0; background: var(--glow); box-shadow: 0 0 10px var(--glow); }
+
+.overlay {
+  position: fixed; inset: 0; z-index: 3; display: grid; place-items: center;
+  background: radial-gradient(ellipse at 50% 40%, rgba(26, 33, 82, .55), rgba(10, 15, 36, .9));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px);
+}
+.card { width: min(100%, 440px); display: grid; gap: 14px; text-align: center; }
+.eyebrow { font: 700 13px/1 var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 800 clamp(44px, 13vw, 76px)/.9 var(--display); margin: 0; color: var(--glow-soft); text-shadow: 0 0 28px rgba(255, 225, 92, .45); text-wrap: balance; }
+h2 { font: 800 clamp(32px, 9vw, 48px)/1 var(--display); margin: 0; text-wrap: balance; }
+.card p { margin: 0; color: var(--muted); max-width: 34ch; justify-self: center; }
+.card p b { color: var(--ink); font-weight: 600; }
+.ladder { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; font-variant-numeric: tabular-nums; }
+.ladder div { border: 1px solid var(--line); border-radius: 10px; padding: 8px 2px 6px; font: 700 12px/1.2 var(--display); color: var(--muted); }
+.ladder div b { display: block; font-size: 17px; color: var(--ink); }
+.ladder div.on { border-color: var(--glow); color: var(--glow-soft); box-shadow: inset 0 0 0 1px var(--glow); }
+.ladder div.done b { color: var(--glow); }
+.legend { display: flex; justify-content: center; gap: 18px; color: var(--muted); font-size: 14px; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.dot.fly { background: var(--glow); box-shadow: 0 0 10px var(--glow); }
+.dot.wasp { background: var(--wasp); }
+.btns { display: grid; gap: 10px; justify-items: center; }
+button.go {
+  font: 800 20px/1 var(--display); color: var(--night); background: var(--glow); border: 0; border-radius: 999px;
+  padding: 16px 34px 13px; min-width: 200px; cursor: pointer; box-shadow: 0 0 24px rgba(255, 225, 92, .45);
+}
+button.go:active { transform: scale(.97); }
+button.ghost { font: 600 15px var(--body); color: var(--muted); background: none; border: 0; padding: 10px; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px; }
+.stats { display: flex; justify-content: center; gap: 22px; font: 700 15px var(--display); color: var(--muted); font-variant-numeric: tabular-nums; }
+.stats b { display: block; font-size: 26px; color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { button.go:active { transform: none; } }
+</style>
+
+<canvas id="c" aria-label="Meadow with fireflies. Tap fireflies to catch them; avoid wasps."></canvas>
+
+<div class="hud" id="hud" hidden>
+  <div><span class="pill" id="hudLevel">Level 1</span><span class="pill" id="hudCaught">0 / 15</span></div>
+  <div><span class="pill lives" id="hudLives"><i></i><i></i><i></i></span><span class="pill time" id="hudTime">30</span></div>
+</div>
+<div class="bar" id="bar" hidden><div><span id="barFill"></span></div></div>
+
+<div class="overlay" id="screenTitle">
+  <div class="card">
+    <div class="eyebrow">Five nights · each 20% harder</div>
+    <h1>Firefly Jar</h1>
+    <p>Tap fireflies to catch them before they fade. Catch <b>15</b> in <b>30 seconds</b> to clear a night. Wasps cost a life, and you have three.</p>
+    <div class="legend"><span><i class="dot fly"></i>Firefly: tap</span><span><i class="dot wasp"></i>Wasp: avoid</span></div>
+    <div class="ladder" id="ladderTitle"></div>
+    <div class="btns">
+      <button class="go" id="btnStart" type="button">Start night 1</button>
+      <button class="ghost" id="btnSound" type="button">Sound: on</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="screenIntro" hidden>
+  <div class="card">
+    <div class="eyebrow" id="introEyebrow">Night 2 of 5</div>
+    <h2 id="introTitle">Difficulty ×1.20</h2>
+    <p id="introText"></p>
+    <div class="ladder" id="ladderIntro"></div>
+    <div class="btns"><button class="go" id="btnGo" type="button">Go</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="screenEnd" hidden>
+  <div class="card">
+    <div class="eyebrow" id="endEyebrow"></div>
+    <h2 id="endTitle"></h2>
+    <p id="endText"></p>
+    <div class="stats" id="endStats"></div>
+    <div class="ladder" id="ladderEnd"></div>
+    <div class="btns">
+      <button class="go" id="btnEnd" type="button">Next</button>
+      <button class="ghost" id="btnMenu" type="button">Back to start</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  // ---- Rules -------------------------------------------------------------
+  // Each night multiplies difficulty by 1.2: fireflies fly 20% faster, fade 20% faster,
+  // and 20% more of what appears are wasps. Goal, clock and lives stay the same, so the
+  // only thing that changes between nights is that 20%.
+  var NIGHTS = 5, STEP = 1.2;
+  var GOAL = 15, CLOCK = 30, LIVES = 3, SPAWN_EVERY = 0.7;
+  var BASE = { speed: 0.15, life: 3.4, wasp: 0.12 }; // speed in screen-widths/s (short side), life in s
+  function mult(n) { return Math.pow(STEP, n - 1); }
+  function params(n) {
+    var m = mult(n);
+    return { m: m, speed: BASE.speed * m, life: BASE.life / m, wasp: Math.min(0.5, BASE.wasp * m) };
+  }
+
+  // ---- Canvas sizing (fold / unfold safe) --------------------------------
+  // Positions are stored as fractions of the screen, sizes as fractions of the short
+  // side, so unfolding from the 5.4" cover screen to the 7.6" inner one mid-night just
+  // stretches the meadow; nothing jumps or resets.
+  var cv = document.getElementById("c"), cx = cv.getContext("2d");
+  var W = 0, H = 0, S = 0, DPR = 1, bg = null;
+  function resize() {
+    W = window.innerWidth; H = window.innerHeight; S = Math.min(W, H);
+    DPR = Math.min(window.devicePixelRatio || 1, 3);
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    cx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    bg = paintBackground();
+  }
+  function rng(seed) { return function () { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
+  function paintBackground() {
+    var c = document.createElement("canvas"); c.width = cv.width; c.height = cv.height;
+    var g = c.getContext("2d"); g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    var sky = g.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, "#070b1c"); sky.addColorStop(0.65, "#1a2152"); sky.addColorStop(1, "#24305e");
+    g.fillStyle = sky; g.fillRect(0, 0, W, H);
+    var r = rng(7);
+    for (var i = 0; i < Math.round(W * H / 2600); i++) {
+      g.globalAlpha = 0.25 + r() * 0.6; g.fillStyle = "#dfe3ff";
+      g.fillRect(r() * W, r() * H * 0.7, r() < 0.9 ? 1 : 2, r() < 0.9 ? 1 : 2);
+    }
+    g.globalAlpha = 1;
+    // moon
+    var mx = W * 0.8, my = H * 0.16, mr = S * 0.07;
+    var halo = g.createRadialGradient(mx, my, mr * 0.5, mx, my, mr * 4);
+    halo.addColorStop(0, "rgba(255,244,200,.22)"); halo.addColorStop(1, "rgba(255,244,200,0)");
+    g.fillStyle = halo; g.fillRect(0, 0, W, H);
+    // crescent: the full disc clipped, minus an offset circle (so the glow shows through the bite)
+    g.save(); g.beginPath(); g.arc(mx, my, mr, 0, 7); g.clip();
+    g.fillStyle = "#f6efcf"; g.beginPath(); g.rect(0, 0, W, H);
+    g.arc(mx + mr * 0.42, my - mr * 0.18, mr * 0.92, 0, 7); g.fill("evenodd");
+    g.restore();
+    // two layers of grass along the bottom
+    [["#121a3d", 0.13, 11], ["#0b1029", 0.08, 23]].forEach(function (L) {
+      var rr = rng(L[2]); g.fillStyle = L[0]; g.beginPath(); g.moveTo(0, H);
+      var base = H - H * L[1];
+      for (var x = 0; x <= W + 8; x += 6) {
+        var h = S * (0.03 + rr() * 0.07);
+        g.lineTo(x, base + S * 0.02); g.lineTo(x + 3 + rr() * 4, base - h); g.lineTo(x + 6, base + S * 0.02);
+      }
+      g.lineTo(W, H); g.closePath(); g.fill();
+    });
+    return c;
+  }
+
+  // ---- State -------------------------------------------------------------
+  var state = "title", night = 1, P = params(1);
+  var bugs = [], sparks = [], caught = 0, lives = LIVES, clock = CLOCK, spawnT = 0, totalTime = 0;
+  var shake = 0, flash = 0, last = 0, cleared = 0, sound = true, ac = null;
+  var best = null;
+  try { best = JSON.parse(localStorage.getItem("fireflyJarBest") || "null"); } catch (e) { best = null; }
+  try { cleared = Number(localStorage.getItem("fireflyJarCleared") || 0) || 0; } catch (e) { cleared = 0; }
+
+  var top = function () { return (parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0) + 70; };
+
+  function spawn() {
+    var isWasp = Math.random() < P.wasp;
+    var margin = 0.08, t = top() / H;
+    bugs.push({
+      wasp: isWasp,
+      x: margin + Math.random() * (1 - 2 * margin),
+      y: Math.max(t, 0.12) + Math.random() * (0.84 - Math.max(t, 0.12)),
+      a: Math.random() * Math.PI * 2,
+      age: 0,
+      life: isWasp ? P.life * 1.8 : P.life,
+      phase: Math.random() * 6,
+      sp: P.speed * (isWasp ? 1.15 : 1) * (0.8 + Math.random() * 0.4)
+    });
+  }
+
+  function startNight(n) {
+    night = n; P = params(n);
+    bugs = []; sparks = []; caught = 0; lives = LIVES; clock = CLOCK; spawnT = 0; shake = 0; flash = 0;
+    for (var i = 0; i < 3; i++) spawn();
+    state = "play"; show(null); setHud();
+  }
+
+  // ---- Input -------------------------------------------------------------
+  cv.addEventListener("pointerdown", function (e) {
+    if (state !== "play") return;
+    e.preventDefault();
+    var px = e.clientX, py = e.clientY, hit = null, bestD = 1e9;
+    for (var i = 0; i < bugs.length; i++) {
+      var b = bugs[i], dx = b.x * W - px, dy = b.y * H - py, d = Math.sqrt(dx * dx + dy * dy);
+      var reach = Math.max(28, S * 0.075); // finger-sized, a bit bigger than the drawn bug
+      if (d < reach && d < bestD) { hit = i; bestD = d; }
+    }
+    if (hit === null) return;
+    var bug = bugs.splice(hit, 1)[0];
+    if (bug.wasp) {
+      lives--; shake = 0.35; flash = 1; beep(110, 0.18, "square", 0.08);
+      if (lives <= 0) return endNight(false, "stung");
+    } else {
+      caught++; burst(bug.x * W, bug.y * H); beep(520 + caught * 28, 0.09, "sine", 0.12);
+      if (caught >= GOAL) return endNight(true);
+    }
+    setHud();
+  }, { passive: false });
+
+  function burst(x, y) {
+    for (var i = 0; i < 14; i++) {
+      var a = Math.random() * Math.PI * 2, v = S * (0.15 + Math.random() * 0.35);
+      sparks.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: 0.45 + Math.random() * 0.3 });
+    }
+  }
+
+  // ---- Sound (starts from the Start button, as browsers require) ---------
+  function beep(f, dur, type, vol) {
+    if (!sound || !ac) return;
+    try {
+      var o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+      o.type = type; o.frequency.setValueAtTime(f, t);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) {}
+  }
+  function ensureAudio() {
+    if (ac || !sound) return;
+    try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; }
+  }
+
+  // ---- Loop --------------------------------------------------------------
+  function frame(ts) {
+    var dt = Math.min(0.05, (ts - (last || ts)) / 1000); last = ts;
+    if (state === "play") update(dt);
+    draw(ts / 1000);
+    requestAnimationFrame(frame);
+  }
+
+  function update(dt) {
+    clock -= dt; totalTime += dt;
+    if (clock <= 0) { clock = 0; return endNight(false, "time"); }
+    spawnT += dt;
+    while (spawnT >= SPAWN_EVERY) { spawnT -= SPAWN_EVERY; spawn(); }
+    var minY = Math.max(top() / H, 0.1);
+    for (var i = bugs.length - 1; i >= 0; i--) {
+      var b = bugs[i];
+      b.age += dt;
+      if (b.age >= b.life) { bugs.splice(i, 1); continue; }
+      b.a += (Math.random() - 0.5) * (b.wasp ? 7 : 4) * dt;
+      b.x += Math.cos(b.a) * b.sp * S * dt / W;
+      b.y += Math.sin(b.a) * b.sp * S * dt / H;
+      if (b.x < 0.04 || b.x > 0.96) { b.a = Math.PI - b.a; b.x = Math.min(0.96, Math.max(0.04, b.x)); }
+      if (b.y < minY || b.y > 0.86) { b.a = -b.a; b.y = Math.min(0.86, Math.max(minY, b.y)); }
+    }
+    for (var j = sparks.length - 1; j >= 0; j--) {
+      var s = sparks[j]; s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 0.92; s.vy *= 0.92;
+      if (s.t > s.life) sparks.splice(j, 1);
+    }
+    shake = Math.max(0, shake - dt); flash = Math.max(0, flash - dt * 3);
+    setClock();
+  }
+
+  function draw(t) {
+    cx.save();
+    var k0 = shake / 0.35, sx = shake > 0 ? (Math.random() - 0.5) * S * 0.03 * k0 : 0, sy = shake > 0 ? (Math.random() - 0.5) * S * 0.03 * k0 : 0;
+    cx.setTransform(DPR, 0, 0, DPR, sx * DPR, sy * DPR);
+    if (bg) cx.drawImage(bg, 0, 0, W, H);
+    var r = S * 0.022;
+    // idle fireflies on the title / break screens so the meadow is never empty
+    var list = state === "play" ? bugs : ambient(t);
+    for (var i = 0; i < list.length; i++) {
+      var b = list[i], x = b.x * W, y = b.y * H;
+      var fade = state === "play" ? Math.min(1, (b.life - b.age) / (b.life * 0.35)) : 1;
+      if (b.wasp) drawWasp(x, y, r, b, t, fade); else drawFly(x, y, r, b, t, fade);
+    }
+    for (var j = 0; j < sparks.length; j++) {
+      var s = sparks[j], k = 1 - s.t / s.life;
+      cx.globalAlpha = k; cx.fillStyle = "#fff4b0";
+      cx.beginPath(); cx.arc(s.x, s.y, Math.max(1, r * 0.22 * k), 0, 7); cx.fill();
+    }
+    cx.globalAlpha = 1;
+    if (flash > 0) {
+      var v = cx.createRadialGradient(W / 2, H / 2, S * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
+      v.addColorStop(0, "rgba(255,106,61,0)"); v.addColorStop(1, "rgba(255,106,61," + (0.55 * flash) + ")");
+      cx.fillStyle = v; cx.fillRect(0, 0, W, H);
+    }
+    cx.restore();
+  }
+
+  function drawFly(x, y, r, b, t, fade) {
+    var pulse = 0.65 + 0.35 * Math.sin(t * 6 + b.phase);
+    var a = Math.max(0, fade) * pulse;
+    var g = cx.createRadialGradient(x, y, 0, x, y, r * 4.2);
+    g.addColorStop(0, "rgba(255,240,150," + (0.85 * a) + ")");
+    g.addColorStop(0.35, "rgba(255,225,92," + (0.35 * a) + ")");
+    g.addColorStop(1, "rgba(255,225,92,0)");
+    cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, r * 4.2, 0, 7); cx.fill();
+    cx.globalAlpha = Math.max(0.15, fade);
+    cx.fillStyle = "#fffbe0"; cx.beginPath(); cx.arc(x, y, r * 0.7, 0, 7); cx.fill();
+    cx.fillStyle = "#2b2a3d"; cx.beginPath(); cx.ellipse(x - Math.cos(b.a) * r * 0.9, y - Math.sin(b.a) * r * 0.9, r * 0.55, r * 0.4, b.a, 0, 7); cx.fill();
+    cx.globalAlpha = 1;
+  }
+
+  function drawWasp(x, y, r, b, t, fade) {
+    var R = r * 1.35;
+    cx.save(); cx.translate(x, y); cx.rotate(b.a); cx.globalAlpha = Math.max(0.3, fade);
+    var halo = cx.createRadialGradient(0, 0, 0, 0, 0, R * 2.6);
+    halo.addColorStop(0, "rgba(255,106,61,.35)"); halo.addColorStop(1, "rgba(255,106,61,0)");
+    cx.fillStyle = halo; cx.beginPath(); cx.arc(0, 0, R * 2.6, 0, 7); cx.fill();
+    var flap = Math.sin(t * 60) * 0.35;
+    cx.fillStyle = "rgba(220,230,255,.55)";
+    cx.beginPath(); cx.ellipse(-R * 0.1, -R * 0.75, R * 0.7, R * 0.35, -0.5 + flap, 0, 7); cx.fill();
+    cx.beginPath(); cx.ellipse(-R * 0.1, R * 0.75, R * 0.7, R * 0.35, 0.5 - flap, 0, 7); cx.fill();
+    cx.fillStyle = "#ff6a3d"; cx.beginPath(); cx.ellipse(0, 0, R * 1.15, R * 0.62, 0, 0, 7); cx.fill();
+    cx.fillStyle = "#1b1530";
+    cx.fillRect(-R * 0.35, -R * 0.6, R * 0.22, R * 1.2); cx.fillRect(R * 0.15, -R * 0.55, R * 0.22, R * 1.1);
+    cx.beginPath(); cx.moveTo(-R * 1.1, 0); cx.lineTo(-R * 1.6, -R * 0.12); cx.lineTo(-R * 1.6, R * 0.12); cx.fill();
+    cx.restore();
+  }
+
+  var amb = [];
+  function ambient(t) {
+    if (!amb.length) for (var i = 0; i < 9; i++) amb.push({ x0: Math.random(), y0: 0.2 + Math.random() * 0.6, phase: Math.random() * 6, a: 0, wasp: i === 4 });
+    amb.forEach(function (b) {
+      b.x = b.x0 + Math.sin(t * 0.4 + b.phase) * 0.06;
+      b.y = b.y0 + Math.cos(t * 0.33 + b.phase * 2) * 0.05;
+      b.a = Math.sin(t * 0.4 + b.phase) > 0 ? 0 : Math.PI;
+    });
+    return amb;
+  }
+
+  // ---- Screens -----------------------------------------------------------
+  var $ = function (id) { return document.getElementById(id); };
+  function show(id) {
+    ["screenTitle", "screenIntro", "screenEnd"].forEach(function (s) { $(s).hidden = s !== id; });
+    var playing = id === null;
+    $("hud").hidden = !playing; $("bar").hidden = !playing;
+  }
+
+  function ladder(el, current) {
+    var html = "";
+    for (var n = 1; n <= NIGHTS; n++) {
+      var cls = n === current ? "on" : n <= cleared ? "done" : "";
+      html += '<div class="' + cls + '"><b>' + n + "</b>×" + mult(n).toFixed(2) + "</div>";
+    }
+    $(el).innerHTML = html;
+  }
+
+  function setHud() {
+    $("hudLevel").textContent = "Night " + night + "/" + NIGHTS;
+    $("hudCaught").textContent = caught + " / " + GOAL;
+    var lv = $("hudLives").children;
+    for (var i = 0; i < lv.length; i++) lv[i].className = i < lives ? "" : "gone";
+    $("barFill").style.width = (100 * caught / GOAL) + "%";
+    setClock();
+  }
+  function setClock() {
+    var s = Math.ceil(clock);
+    var el = $("hudTime");
+    if (el.textContent !== String(s)) el.textContent = s;
+    el.classList.toggle("low", s <= 5);
+  }
+
+  function intro(n) {
+    var p = params(n);
+    night = n; state = "intro";
+    $("introEyebrow").textContent = "Night " + n + " of " + NIGHTS;
+    $("introTitle").textContent = "Difficulty ×" + p.m.toFixed(2);
+    $("introText").innerHTML = n === 1
+      ? "Catch <b>" + GOAL + "</b> fireflies in <b>" + CLOCK + "s</b>. Each one glows for about <b>" + p.life.toFixed(1) + "s</b>."
+      : "20% harder than night " + (n - 1) + ": fireflies fly faster, glow for only <b>" + p.life.toFixed(1) +
+        "s</b>, and about <b>" + Math.round(p.wasp * 100) + "%</b> of bugs are wasps.";
+    ladder("ladderIntro", n);
+    show("screenIntro");
+    setTimeout(function () { $("btnGo").focus(); }, 0);
+  }
+
+  function endNight(won, why) {
+    state = "end";
+    show("screenEnd");
+    if (won) {
+      cleared = Math.max(cleared, night);
+      try { localStorage.setItem("fireflyJarCleared", String(cleared)); } catch (e) {}
+    }
+    var final = won && night === NIGHTS;
+    if (final) {
+      var t = Math.round(totalTime);
+      var isBest = best === null || t < best;
+      if (isBest) { best = t; try { localStorage.setItem("fireflyJarBest", String(t)); } catch (e) {} }
+      $("endEyebrow").textContent = "All five nights cleared";
+      $("endTitle").textContent = "Jar full";
+      $("endText").textContent = isBest ? "A new best time. The last night was twice as hard as the first." : "You beat night 5, which was twice as hard as night 1.";
+      $("endStats").innerHTML = "<div><b>" + t + "s</b>total</div><div><b>" + best + "s</b>best</div>";
+      $("btnEnd").textContent = "Play again";
+      $("btnEnd").onclick = function () { totalTime = 0; intro(1); };
+      beep(660, 0.12, "sine", 0.12); setTimeout(function () { beep(880, 0.2, "sine", 0.12); }, 130);
+    } else if (won) {
+      $("endEyebrow").textContent = "Night " + night + " cleared";
+      $("endTitle").textContent = caught + " caught";
+      $("endText").textContent = "Next night: everything moves 20% faster.";
+      $("endStats").innerHTML = "<div><b>" + Math.ceil(clock) + "s</b>to spare</div><div><b>" + lives + "</b>lives left</div>";
+      $("btnEnd").textContent = "Night " + (night + 1);
+      $("btnEnd").onclick = function () { intro(night + 1); };
+    } else {
+      $("endEyebrow").textContent = "Night " + night + " · ×" + P.m.toFixed(2);
+      $("endTitle").textContent = why === "stung" ? "Stung out" : "Time's up";
+      $("endText").textContent = why === "stung"
+        ? "Three wasps got you. Watch for the orange ones with stripes."
+        : "You caught " + caught + " of " + GOAL + ". Tap the brightest ones first; fading ones are about to vanish.";
+      $("endStats").innerHTML = "";
+      $("btnEnd").textContent = "Try night " + night + " again";
+      $("btnEnd").onclick = function () { intro(night); };
+    }
+    ladder("ladderEnd", final ? 0 : night);
+    setTimeout(function () { $("btnEnd").focus(); }, 0);
+  }
+
+  $("btnStart").onclick = function () { ensureAudio(); totalTime = 0; intro(1); };
+  $("btnGo").onclick = function () { ensureAudio(); if (ac && ac.resume) ac.resume(); startNight(night); };
+  $("btnMenu").onclick = function () { state = "title"; ladder("ladderTitle", 0); show("screenTitle"); };
+  $("btnSound").onclick = function () {
+    sound = !sound; $("btnSound").textContent = "Sound: " + (sound ? "on" : "off");
+    try { localStorage.setItem("fireflyJarSound", sound ? "1" : "0"); } catch (e) {}
+  };
+  try { if (localStorage.getItem("fireflyJarSound") === "0") { sound = false; $("btnSound").textContent = "Sound: off"; } } catch (e) {}
+
+  // Pause when the app goes to the background (or the phone is closed).
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden && state === "play") {
+      state = "paused";
+      $("introEyebrow").textContent = "Paused · Night " + night;
+      $("introTitle").textContent = caught + " / " + GOAL;
+      $("introText").innerHTML = "<b>" + Math.ceil(clock) + "s</b> left. Tap to keep going.";
+      ladder("ladderIntro", night);
+      $("btnGo").onclick = function () { state = "play"; show(null); last = 0; $("btnGo").onclick = goHandler; };
+      show("screenIntro");
+    }
+  });
+  var goHandler = $("btnGo").onclick;
+
+  window.addEventListener("resize", resize);
+  resize();
+  ladder("ladderTitle", 0);
+  requestAnimationFrame(frame);
+})();
+</script>
