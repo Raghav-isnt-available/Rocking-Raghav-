@@ -1,0 +1,285 @@
+<title>Mandarin Quizlet Sets</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@600&display=swap">
+<style>
+  /* Layout: one centred column. Each set is a row: a 田字格 writing-grid tile, the set name, then copy actions. */
+  :root {
+    --bg: #f4f7f5;
+    --surface: #ffffff;
+    --ink: #16201d;
+    --muted: #586660;
+    --line: #dbe3df;
+    --accent: #0d7656;
+    --accent-ink: #ffffff;
+    --grid: #c4463d;
+    --font-body: "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;
+    --font-han: "Noto Serif SC", "Songti SC", "SimSun", serif;
+    --font-cjk: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1311; --surface: #141c19; --ink: #e3ebe7; --muted: #98a8a1; --line: #25312d;
+      --accent: #43c39a; --accent-ink: #052118; --grid: #e06c64; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1311; --surface: #141c19; --ink: #e3ebe7; --muted: #98a8a1; --line: #25312d;
+    --accent: #43c39a; --accent-ink: #052118; --grid: #e06c64; color-scheme: dark;
+  }
+
+  body { background: var(--bg); color: var(--ink); font: 400 15px/1.55 var(--font-body); }
+  .wrap {
+    max-width: 860px; margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 40px 72px;
+    display: grid; gap: 40px;
+  }
+  h1, h2, h3 { margin: 0; text-wrap: balance; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* 田字格: the four-square grid Chinese schoolbooks use for writing practice */
+  .tzg {
+    position: relative; flex: none; width: 52px; aspect-ratio: 1; max-width: 100%;
+    display: grid; place-items: center;
+    border: 1.5px solid var(--grid); background: var(--surface);
+    font: 600 30px/1 var(--font-han); color: var(--ink);
+  }
+  .tzg::before, .tzg::after { content: ""; position: absolute; opacity: .5; }
+  .tzg::before { left: 50%; top: 0; bottom: 0; border-left: 1px dashed var(--grid); }
+  .tzg::after { top: 50%; left: 0; right: 0; border-top: 1px dashed var(--grid); }
+  .tzg span { position: relative; z-index: 1; }
+  .tzg.big { width: 88px; font-size: 54px; }
+
+  .top { display: flex; gap: 20px; align-items: flex-start; }
+  .top > div { display: grid; gap: 10px; min-width: 0; }
+  .eyebrow { margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-size: clamp(28px, 5vw, 38px); font-weight: 600; line-height: 1.1; letter-spacing: -.01em; }
+  .lede { margin: 0; color: var(--muted); max-width: 60ch; }
+  .progress { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar { flex: 1; max-width: 260px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .bar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s ease; }
+
+  .steps { display: grid; gap: 10px; padding: 20px 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  .steps h2 { font-size: 15px; font-weight: 600; }
+  .steps ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+  .steps p { margin: 0; font-size: 13px; color: var(--muted); }
+
+  .group { display: grid; gap: 4px; }
+  .group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--ink); }
+  .group-head h2 { font-size: 18px; font-weight: 600; }
+  .group-head span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .set {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 16px; align-items: center;
+    padding: 14px 0; border-bottom: 1px solid var(--line);
+  }
+  .set h3 { font-size: 15px; font-weight: 600; }
+  .sample { margin: 2px 0 0; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sample b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: flex-end; }
+  .btn {
+    font: 500 13px/1 var(--font-body); padding: 9px 13px; border-radius: 7px; cursor: pointer;
+    border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); min-width: 92px;
+  }
+  .btn.ghost { background: transparent; color: var(--accent); }
+  .btn:hover { filter: brightness(1.08); }
+  .done { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; padding-left: 4px; }
+  .done input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+  .set.is-done .tzg { opacity: .45; }
+  .set.is-done h3 { color: var(--muted); }
+  .set.is-done .done { color: var(--accent); font-weight: 500; }
+
+  .set details, .set .fallback { grid-column: 1 / -1; }
+  .set summary { cursor: pointer; font-size: 13px; color: var(--accent); width: fit-content; }
+  .tablewrap { overflow-x: auto; margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td { padding: 7px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+  tr:first-child td { border-top: 0; }
+  td.han { font-family: var(--font-cjk); font-size: 16px; white-space: nowrap; }
+  td.py { color: var(--accent); white-space: nowrap; }
+  .fallback { width: 100%; min-height: 120px; font: 13px/1.5 var(--font-cjk); border: 1px solid var(--accent); border-radius: 8px; padding: 10px; background: var(--surface); color: var(--ink); box-sizing: border-box; }
+
+  footer { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; max-width: 65ch; }
+
+  @media (max-width: 560px) {
+    .set { grid-template-columns: auto minmax(0, 1fr); }
+    .actions { grid-column: 1 / -1; justify-content: flex-start; }
+    .top { gap: 14px; }
+    .tzg.big { width: 64px; font-size: 40px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .bar span { transition: none; } }
+</style>
+
+<main class="wrap">
+  <header class="top">
+    <div class="tzg big" aria-hidden="true"><span>学</span></div>
+    <div>
+      <p class="eyebrow">Simplified characters · pinyin · English</p>
+      <h1>Mandarin Quizlet Sets</h1>
+      <p class="lede" id="lede">Copy each set into Quizlet's import box. Each one takes about 30 seconds.</p>
+      <div class="progress"><div class="bar"><span id="bar-fill"></span></div><span id="progress-label"></span></div>
+    </div>
+  </header>
+
+  <section class="steps" aria-labelledby="steps-h">
+    <h2 id="steps-h">Importing one set</h2>
+    <ol>
+      <li>On a computer, open <a href="https://quizlet.com/create-set" target="_blank" rel="noopener">Quizlet's create page</a>.</li>
+      <li>Click <b>Copy title</b> below and paste it into the set's title field.</li>
+      <li>Click <b>Import</b> in Quizlet, then click <b>Copy cards</b> below and paste into the import box.</li>
+      <li>Set <b>Between term and definition</b> to <b>Tab</b> and <b>Between cards</b> to <b>New line</b>, then click <b>Import</b>.</li>
+      <li>Set the term language to <b>Chinese (Simplified)</b> so Quizlet reads the characters aloud, then click <b>Create</b>.</li>
+    </ol>
+    <p>Each card has the characters on the front, and the pinyin and English on the back. To practise saying words, turn on "Answer with term" in Quizlet's study settings.</p>
+  </section>
+
+  <div id="groups"></div>
+
+  <footer>Sets from your textbook will go first in this list. Paste the pages into a Claude Code session in this repository and they'll be added as their own sets.</footer>
+</main>
+
+<script id="sets-data" type="application/json">__SETS_JSON__</script>
+<script>
+(function () {
+  const SETS = JSON.parse(document.getElementById("sets-data").textContent);
+  const KEY = "mandarin-quizlet-imported";
+  let done = new Set();
+  try { done = new Set(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch (e) {}
+
+  const total = SETS.reduce((n, s) => n + s.lines.length, 0);
+  document.getElementById("lede").textContent =
+    `${SETS.length} sets, ${total} cards. Copy each set into Quizlet's import box. Each one takes about 30 seconds.`;
+
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify([...done])); } catch (e) {}
+  }
+
+  function updateProgress() {
+    const n = SETS.filter(s => done.has(s.id)).length;
+    document.getElementById("progress-label").textContent = `${n} of ${SETS.length} imported`;
+    document.getElementById("bar-fill").style.width = `${(n / SETS.length) * 100}%`;
+  }
+
+  function flash(btn, label) {
+    const original = btn.dataset.label;
+    btn.textContent = label;
+    clearTimeout(btn._t);
+    btn._t = setTimeout(() => { btn.textContent = original; }, 1800);
+  }
+
+  async function copy(text, btn, fallback) {
+    try {
+      await navigator.clipboard.writeText(text);
+      fallback.hidden = true;
+      flash(btn, "Copied");
+    } catch (e) {
+      fallback.value = text;
+      fallback.hidden = false;
+      fallback.focus();
+      fallback.select();
+      flash(btn, "Press Ctrl+C");
+    }
+  }
+
+  const root = document.getElementById("groups");
+  root.className = "wrap-groups";
+  root.style.display = "grid";
+  root.style.gap = "36px";
+
+  const groups = [];
+  for (const s of SETS) {
+    let g = groups.find(x => x.name === s.group);
+    if (!g) { g = { name: s.group, sets: [] }; groups.push(g); }
+    g.sets.push(s);
+  }
+
+  for (const g of groups) {
+    const section = el("section", "group");
+    const head = el("div", "group-head");
+    head.append(el("h2", null, g.name));
+    const cards = g.sets.reduce((n, s) => n + s.lines.length, 0);
+    head.append(el("span", null, `${g.sets.length} sets · ${cards} cards`));
+    section.append(head);
+
+    for (const s of g.sets) {
+      const row = el("article", "set");
+      if (done.has(s.id)) row.classList.add("is-done");
+
+      const tile = el("div", "tzg");
+      tile.setAttribute("aria-hidden", "true");
+      tile.append(el("span", null, s.glyph));
+
+      const meta = el("div");
+      meta.style.minWidth = "0";
+      meta.append(el("h3", null, s.title));
+      const sample = el("p", "sample");
+      sample.append(el("b", null, `${s.lines.length} cards`));
+      sample.append(document.createTextNode(" · " + s.lines.slice(0, 4).map(l => l.split("\t")[0]).join("  ")));
+      meta.append(sample);
+
+      const actions = el("div", "actions");
+      const fallback = el("textarea", "fallback");
+      fallback.readOnly = true;
+      fallback.hidden = true;
+      fallback.id = `fallback-${s.id}`;
+      fallback.setAttribute("aria-label", `Cards for ${s.title}`);
+
+      const bTitle = el("button", "btn ghost", "Copy title");
+      bTitle.type = "button";
+      bTitle.dataset.label = "Copy title";
+      bTitle.addEventListener("click", () => copy(s.title, bTitle, fallback));
+
+      const bCards = el("button", "btn", "Copy cards");
+      bCards.type = "button";
+      bCards.dataset.label = "Copy cards";
+      bCards.addEventListener("click", () => copy(s.lines.join("\n"), bCards, fallback));
+
+      const label = el("label", "done");
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.id = `done-${s.id}`;
+      box.checked = done.has(s.id);
+      box.addEventListener("change", () => {
+        if (box.checked) done.add(s.id); else done.delete(s.id);
+        row.classList.toggle("is-done", box.checked);
+        save();
+        updateProgress();
+      });
+      label.append(box, document.createTextNode("Imported"));
+      actions.append(bTitle, bCards, label);
+
+      const details = el("details");
+      details.append(el("summary", null, "Preview cards"));
+      const wrap = el("div", "tablewrap");
+      const table = el("table");
+      for (const line of s.lines) {
+        const [term, def] = line.split("\t");
+        const cut = def.indexOf(" — ");
+        const tr = el("tr");
+        tr.append(el("td", "han", term));
+        tr.append(el("td", "py", cut > -1 ? def.slice(0, cut) : ""));
+        tr.append(el("td", null, cut > -1 ? def.slice(cut + 3) : def));
+        table.append(tr);
+      }
+      wrap.append(table);
+      details.append(wrap);
+
+      row.append(tile, meta, actions, details, fallback);
+      section.append(row);
+    }
+    root.append(section);
+  }
+  updateProgress();
+})();
+</script>

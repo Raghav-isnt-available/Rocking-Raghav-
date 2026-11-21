@@ -1,0 +1,14 @@
+[
+  {"file": "06-phrases-introductions.tsv", "title": "Phrases · Introductions & Small Talk", "group": "Everyday phrases", "glyph": "你"},
+  {"file": "07-phrases-questions-help.tsv", "title": "Phrases · Questions & Getting Help", "group": "Everyday phrases", "glyph": "问"},
+  {"file": "08-phrases-time-dates-numbers.tsv", "title": "Phrases · Time, Dates & Numbers", "group": "Everyday phrases", "glyph": "点"},
+  {"file": "01-hsk2-verbs.tsv", "title": "HSK 2 · Verbs", "group": "HSK 2", "glyph": "走"},
+  {"file": "02-hsk2-people-places.tsv", "title": "HSK 2 · People & Places", "group": "HSK 2", "glyph": "门"},
+  {"file": "03-hsk2-things-food-time.tsv", "title": "HSK 2 · Things, Food & Time", "group": "HSK 2", "glyph": "鱼"},
+  {"file": "04-hsk2-describing-words.tsv", "title": "HSK 2 · Describing Words & Adverbs", "group": "HSK 2", "glyph": "快"},
+  {"file": "05-hsk2-grammar-numbers.tsv", "title": "HSK 2 · Grammar Words & Numbers", "group": "HSK 2", "glyph": "比"},
+  {"file": "09-hsk3-verbs.tsv", "title": "HSK 3 · Verbs", "group": "HSK 3", "glyph": "换"},
+  {"file": "10-hsk3-nouns.tsv", "title": "HSK 3 · Nouns", "group": "HSK 3", "glyph": "城"},
+  {"file": "11-hsk3-adjectives.tsv", "title": "HSK 3 · Adjectives", "group": "HSK 3", "glyph": "饿"},
+  {"file": "12-hsk3-adverbs-connectors.tsv", "title": "HSK 3 · Adverbs & Connectors", "group": "HSK 3", "glyph": "把"}
+]

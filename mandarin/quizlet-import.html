@@ -1,0 +1,285 @@
+<title>Mandarin Quizlet Sets</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500&family=Noto+Serif+SC:wght@600&display=swap">
+<style>
+  /* Layout: one centred column. Each set is a row: a 田字格 writing-grid tile, the set name, then copy actions. */
+  :root {
+    --bg: #f4f7f5;
+    --surface: #ffffff;
+    --ink: #16201d;
+    --muted: #586660;
+    --line: #dbe3df;
+    --accent: #0d7656;
+    --accent-ink: #ffffff;
+    --grid: #c4463d;
+    --font-body: "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;
+    --font-han: "Noto Serif SC", "Songti SC", "SimSun", serif;
+    --font-cjk: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1311; --surface: #141c19; --ink: #e3ebe7; --muted: #98a8a1; --line: #25312d;
+      --accent: #43c39a; --accent-ink: #052118; --grid: #e06c64; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1311; --surface: #141c19; --ink: #e3ebe7; --muted: #98a8a1; --line: #25312d;
+    --accent: #43c39a; --accent-ink: #052118; --grid: #e06c64; color-scheme: dark;
+  }
+
+  body { background: var(--bg); color: var(--ink); font: 400 15px/1.55 var(--font-body); }
+  .wrap {
+    max-width: 860px; margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 40px 72px;
+    display: grid; gap: 40px;
+  }
+  h1, h2, h3 { margin: 0; text-wrap: balance; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* 田字格: the four-square grid Chinese schoolbooks use for writing practice */
+  .tzg {
+    position: relative; flex: none; width: 52px; aspect-ratio: 1; max-width: 100%;
+    display: grid; place-items: center;
+    border: 1.5px solid var(--grid); background: var(--surface);
+    font: 600 30px/1 var(--font-han); color: var(--ink);
+  }
+  .tzg::before, .tzg::after { content: ""; position: absolute; opacity: .5; }
+  .tzg::before { left: 50%; top: 0; bottom: 0; border-left: 1px dashed var(--grid); }
+  .tzg::after { top: 50%; left: 0; right: 0; border-top: 1px dashed var(--grid); }
+  .tzg span { position: relative; z-index: 1; }
+  .tzg.big { width: 88px; font-size: 54px; }
+
+  .top { display: flex; gap: 20px; align-items: flex-start; }
+  .top > div { display: grid; gap: 10px; min-width: 0; }
+  .eyebrow { margin: 0; font-size: 12px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-size: clamp(28px, 5vw, 38px); font-weight: 600; line-height: 1.1; letter-spacing: -.01em; }
+  .lede { margin: 0; color: var(--muted); max-width: 60ch; }
+  .progress { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar { flex: 1; max-width: 260px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .bar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s ease; }
+
+  .steps { display: grid; gap: 10px; padding: 20px 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  .steps h2 { font-size: 15px; font-weight: 600; }
+  .steps ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+  .steps p { margin: 0; font-size: 13px; color: var(--muted); }
+
+  .group { display: grid; gap: 4px; }
+  .group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--ink); }
+  .group-head h2 { font-size: 18px; font-weight: 600; }
+  .group-head span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .set {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px 16px; align-items: center;
+    padding: 14px 0; border-bottom: 1px solid var(--line);
+  }
+  .set h3 { font-size: 15px; font-weight: 600; }
+  .sample { margin: 2px 0 0; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sample b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: flex-end; }
+  .btn {
+    font: 500 13px/1 var(--font-body); padding: 9px 13px; border-radius: 7px; cursor: pointer;
+    border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); min-width: 92px;
+  }
+  .btn.ghost { background: transparent; color: var(--accent); }
+  .btn:hover { filter: brightness(1.08); }
+  .done { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; padding-left: 4px; }
+  .done input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+  .set.is-done .tzg { opacity: .45; }
+  .set.is-done h3 { color: var(--muted); }
+  .set.is-done .done { color: var(--accent); font-weight: 500; }
+
+  .set details, .set .fallback { grid-column: 1 / -1; }
+  .set summary { cursor: pointer; font-size: 13px; color: var(--accent); width: fit-content; }
+  .tablewrap { overflow-x: auto; margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td { padding: 7px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+  tr:first-child td { border-top: 0; }
+  td.han { font-family: var(--font-cjk); font-size: 16px; white-space: nowrap; }
+  td.py { color: var(--accent); white-space: nowrap; }
+  .fallback { width: 100%; min-height: 120px; font: 13px/1.5 var(--font-cjk); border: 1px solid var(--accent); border-radius: 8px; padding: 10px; background: var(--surface); color: var(--ink); box-sizing: border-box; }
+
+  footer { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; max-width: 65ch; }
+
+  @media (max-width: 560px) {
+    .set { grid-template-columns: auto minmax(0, 1fr); }
+    .actions { grid-column: 1 / -1; justify-content: flex-start; }
+    .top { gap: 14px; }
+    .tzg.big { width: 64px; font-size: 40px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .bar span { transition: none; } }
+</style>
+
+<main class="wrap">
+  <header class="top">
+    <div class="tzg big" aria-hidden="true"><span>学</span></div>
+    <div>
+      <p class="eyebrow">Simplified characters · pinyin · English</p>
+      <h1>Mandarin Quizlet Sets</h1>
+      <p class="lede" id="lede">Copy each set into Quizlet's import box. Each one takes about 30 seconds.</p>
+      <div class="progress"><div class="bar"><span id="bar-fill"></span></div><span id="progress-label"></span></div>
+    </div>
+  </header>
+
+  <section class="steps" aria-labelledby="steps-h">
+    <h2 id="steps-h">Importing one set</h2>
+    <ol>
+      <li>On a computer, open <a href="https://quizlet.com/create-set" target="_blank" rel="noopener">Quizlet's create page</a>.</li>
+      <li>Click <b>Copy title</b> below and paste it into the set's title field.</li>
+      <li>Click <b>Import</b> in Quizlet, then click <b>Copy cards</b> below and paste into the import box.</li>
+      <li>Set <b>Between term and definition</b> to <b>Tab</b> and <b>Between cards</b> to <b>New line</b>, then click <b>Import</b>.</li>
+      <li>Set the term language to <b>Chinese (Simplified)</b> so Quizlet reads the characters aloud, then click <b>Create</b>.</li>
+    </ol>
+    <p>Each card has the characters on the front, and the pinyin and English on the back. To practise saying words, turn on "Answer with term" in Quizlet's study settings.</p>
+  </section>
+
+  <div id="groups"></div>
+
+  <footer>Sets from your textbook will go first in this list. Paste the pages into a Claude Code session in this repository and they'll be added as their own sets.</footer>
+</main>
+
+<script id="sets-data" type="application/json">[{"id": "06-phrases-introductions", "title": "Phrases · Introductions & Small Talk", "group": "Everyday phrases", "glyph": "你", "lines": ["你好！\tNǐ hǎo! — Hello!", "您好！\tNín hǎo! — Hello! (polite)", "你叫什么名字？\tNǐ jiào shénme míngzi? — What's your name?", "我叫……\tWǒ jiào… — My name is…", "您贵姓？\tNín guì xìng? — What's your surname? (polite)", "我姓王。\tWǒ xìng Wáng. — My surname is Wang.", "很高兴认识你。\tHěn gāoxìng rènshi nǐ. — Nice to meet you.", "你是哪国人？\tNǐ shì nǎ guó rén? — Which country are you from?", "我是……人。\tWǒ shì … rén. — I'm from… (nationality)", "你做什么工作？\tNǐ zuò shénme gōngzuò? — What do you do for work?", "你住在哪儿？\tNǐ zhù zài nǎr? — Where do you live?", "你会说中文吗？\tNǐ huì shuō Zhōngwén ma? — Can you speak Chinese?", "我会说一点儿中文。\tWǒ huì shuō yìdiǎnr Zhōngwén. — I can speak a little Chinese.", "我在学中文。\tWǒ zài xué Zhōngwén. — I'm learning Chinese.", "你最近怎么样？\tNǐ zuìjìn zěnmeyàng? — How have you been lately?", "还不错。\tHái búcuò. — Not bad.", "你呢？\tNǐ ne? — And you?", "好久不见！\tHǎo jiǔ bú jiàn! — Long time no see!", "欢迎！\tHuānyíng! — Welcome!", "谢谢！\tXièxie! — Thank you!", "不客气。\tBú kèqi. — You're welcome.", "对不起。\tDuìbuqǐ. — Sorry.", "没关系。\tMéi guānxi. — It's OK; it doesn't matter.", "再见！\tZàijiàn! — Goodbye!", "明天见！\tMíngtiān jiàn! — See you tomorrow!", "祝你生日快乐！\tZhù nǐ shēngrì kuàilè! — Happy birthday!"]}, {"id": "07-phrases-questions-help", "title": "Phrases · Questions & Getting Help", "group": "Everyday phrases", "glyph": "问", "lines": ["请问……\tQǐngwèn… — Excuse me, may I ask…", "这是什么？\tZhè shì shénme? — What is this?", "这个多少钱？\tZhège duōshao qián? — How much is this?", "太贵了！\tTài guì le! — Too expensive!", "便宜一点儿，可以吗？\tPiányi yìdiǎnr, kěyǐ ma? — Can you make it a bit cheaper?", "洗手间在哪儿？\tXǐshǒujiān zài nǎr? — Where is the restroom?", "……怎么走？\t… zěnme zǒu? — How do I get to…?", "离这儿远吗？\tLí zhèr yuǎn ma? — Is it far from here?", "我听不懂。\tWǒ tīng bu dǒng. — I don't understand (what I'm hearing).", "请再说一遍。\tQǐng zài shuō yí biàn. — Please say that again.", "请说慢一点儿。\tQǐng shuō màn yìdiǎnr. — Please speak a little slower.", "……用中文怎么说？\t… yòng Zhōngwén zěnme shuō? — How do you say … in Chinese?", "这是什么意思？\tZhè shì shénme yìsi? — What does this mean?", "你能帮我吗？\tNǐ néng bāng wǒ ma? — Can you help me?", "我要这个。\tWǒ yào zhège. — I want this one.", "我不要。\tWǒ bú yào. — I don't want it.", "可以刷卡吗？\tKěyǐ shuā kǎ ma? — Can I pay by card?", "可以扫码吗？\tKěyǐ sǎo mǎ ma? — Can I pay by scanning a QR code?", "服务员，买单！\tFúwùyuán, mǎi dān! — Waiter, the bill please!", "我不舒服。\tWǒ bù shūfu. — I don't feel well.", "我迷路了。\tWǒ mí lù le. — I'm lost.", "没问题。\tMéi wèntí. — No problem.", "等一下。\tDěng yíxià. — Wait a moment.", "你说得对。\tNǐ shuō de duì. — You're right.", "我不知道。\tWǒ bù zhīdào. — I don't know."]}, {"id": "08-phrases-time-dates-numbers", "title": "Phrases · Time, Dates & Numbers", "group": "Everyday phrases", "glyph": "点", "lines": ["现在几点？\tXiànzài jǐ diǎn? — What time is it?", "三点半\tsān diǎn bàn — 3:30 (half past three)", "差五分八点\tchà wǔ fēn bā diǎn — five to eight (7:55)", "今天几月几号？\tJīntiān jǐ yuè jǐ hào? — What's the date today?", "今天星期几？\tJīntiān xīngqī jǐ? — What day of the week is it?", "星期一\txīngqī yī — Monday", "星期天\txīngqītiān — Sunday", "周末\tzhōumò — weekend", "昨天\tzuótiān — yesterday", "今天\tjīntiān — today", "明天\tmíngtiān — tomorrow", "后天\thòutiān — the day after tomorrow", "上个星期\tshàng ge xīngqī — last week", "下个月\txià ge yuè — next month", "去年\tqùnián — last year", "早上\tzǎoshang — (early) morning", "中午\tzhōngwǔ — noon", "下午\txiàwǔ — afternoon", "晚上\twǎnshang — evening; night", "一个小时\tyí ge xiǎoshí — one hour", "十五分钟\tshíwǔ fēnzhōng — fifteen minutes", "你几点上班？\tNǐ jǐ diǎn shàng bān? — What time do you start work?", "你什么时候有空？\tNǐ shénme shíhou yǒu kòng? — When are you free?", "二十\tèrshí — 20", "一百\tyìbǎi — 100", "两百\tliǎng bǎi — 200", "一千\tyìqiān — 1,000", "一万\tyíwàn — 10,000", "一百零五\tyìbǎi líng wǔ — 105", "两块五\tliǎng kuài wǔ — 2.50 yuan (spoken)"]}, {"id": "01-hsk2-verbs", "title": "HSK 2 · Verbs", "group": "HSK 2", "glyph": "走", "lines": ["帮助\tbāngzhù — to help", "唱歌\tchàng gē — to sing", "穿\tchuān — to wear; to put on (clothes)", "懂\tdǒng — to understand", "等\tděng — to wait (for)", "告诉\tgàosu — to tell", "回答\thuídá — to answer", "介绍\tjièshào — to introduce", "进\tjìn — to enter; to come in", "觉得\tjuéde — to feel; to think (give an opinion)", "开始\tkāishǐ — to begin; to start", "卖\tmài — to sell", "起床\tqǐ chuáng — to get up (out of bed)", "上班\tshàng bān — to go to work; to be at work", "生病\tshēng bìng — to get sick", "说话\tshuō huà — to speak; to talk", "送\tsòng — to give (as a gift); to see someone off; to deliver", "跳舞\ttiào wǔ — to dance", "玩\twán — to play; to have fun", "问\twèn — to ask", "希望\txīwàng — to hope; hope", "洗\txǐ — to wash", "笑\txiào — to laugh; to smile", "休息\txiūxi — to rest", "找\tzhǎo — to look for; to find", "知道\tzhīdào — to know (a fact)", "准备\tzhǔnbèi — to prepare; to plan to", "走\tzǒu — to walk; to leave", "游泳\tyóu yǒng — to swim", "跑步\tpǎo bù — to run; to jog", "旅游\tlǚyóu — to travel; to go sightseeing", "让\tràng — to let; to make (someone do something)"]}, {"id": "02-hsk2-people-places", "title": "HSK 2 · People & Places", "group": "HSK 2", "glyph": "门", "lines": ["弟弟\tdìdi — younger brother", "哥哥\tgēge — older brother", "姐姐\tjiějie — older sister", "妹妹\tmèimei — younger sister", "丈夫\tzhàngfu — husband", "妻子\tqīzi — wife", "孩子\tháizi — child", "大家\tdàjiā — everyone", "服务员\tfúwùyuán — waiter; waitress; attendant", "宾馆\tbīnguǎn — hotel", "机场\tjīchǎng — airport", "公司\tgōngsī — company", "教室\tjiàoshì — classroom", "房间\tfángjiān — room", "路\tlù — road; route", "门\tmén — door; gate", "旁边\tpángbiān — beside; next to", "左边\tzuǒbian — left side", "右边\tyòubian — right side", "外\twài — outside"]}, {"id": "03-hsk2-things-food-time", "title": "HSK 2 · Things, Food & Time", "group": "HSK 2", "glyph": "鱼", "lines": ["公共汽车\tgōnggòng qìchē — bus", "报纸\tbàozhǐ — newspaper", "手机\tshǒujī — mobile phone", "手表\tshǒubiǎo — wristwatch", "铅笔\tqiānbǐ — pencil", "票\tpiào — ticket", "药\tyào — medicine", "咖啡\tkāfēi — coffee", "牛奶\tniúnǎi — milk", "鸡蛋\tjīdàn — (chicken) egg", "面条\tmiàntiáo — noodles", "羊肉\tyángròu — lamb; mutton", "鱼\tyú — fish", "西瓜\txīguā — watermelon", "眼睛\tyǎnjing — eye", "身体\tshēntǐ — body; health", "颜色\tyánsè — color", "生日\tshēngrì — birthday", "考试\tkǎoshì — exam; to take an exam", "问题\twèntí — question; problem", "事情\tshìqing — thing; matter; affair", "意思\tyìsi — meaning", "时间\tshíjiān — time", "小时\txiǎoshí — hour"]}, {"id": "04-hsk2-describing-words", "title": "HSK 2 · Describing Words & Adverbs", "group": "HSK 2", "glyph": "快", "lines": ["白\tbái — white", "黑\thēi — black", "红\thóng — red", "高\tgāo — tall; high", "长\tcháng — long", "新\txīn — new", "贵\tguì — expensive", "便宜\tpiányi — cheap", "快\tkuài — fast; quick", "慢\tmàn — slow", "忙\tmáng — busy", "累\tlèi — tired", "近\tjìn — near; close", "远\tyuǎn — far", "好吃\thǎochī — tasty; delicious", "快乐\tkuàilè — happy", "晴\tqíng — sunny; clear (weather)", "阴\tyīn — cloudy; overcast", "错\tcuò — wrong; mistake", "真\tzhēn — really; truly", "非常\tfēicháng — very; extremely", "最\tzuì — most (最好 = best)", "已经\tyǐjīng — already", "一起\tyìqǐ — together", "再\tzài — again (in the future); once more", "就\tjiù — then; right away; just", "还\thái — still; also; yet", "别\tbié — don't (别走 = don't go)", "正在\tzhèngzài — in the middle of (doing something)", "可能\tkěnéng — maybe; possibly", "可以\tkěyǐ — can; may (permission)", "每\tměi — every; each"]}, {"id": "05-hsk2-grammar-numbers", "title": "HSK 2 · Grammar Words & Numbers", "group": "HSK 2", "glyph": "比", "lines": ["因为……所以……\tyīnwèi… suǒyǐ… — because… so…", "虽然……但是……\tsuīrán… dànshì… — although… (still)…", "为什么\twèi shénme — why", "比\tbǐ — compared to (我比他高 = I'm taller than him)", "从\tcóng — from (从北京来 = come from Beijing)", "离\tlí — (distance) from (我家离公司很远 = my home is far from the office)", "往\twǎng — toward (往前走 = go straight ahead)", "给\tgěi — to give; for (someone)", "对\tduì — correct; to/towards (对我很好 = good to me)", "过\tguo — (after a verb) have done before (我去过中国 = I've been to China)", "着\tzhe — (after a verb) ongoing state (门开着 = the door is open)", "得\tde — (after a verb) how well something is done (说得很好 = speaks very well)", "吧\tba — (end particle) let's…; I suppose… (我们走吧 = let's go)", "要\tyào — to want; to need to; going to", "次\tcì — time(s), occurrences (三次 = three times)", "件\tjiàn — measure word for clothes and matters (一件衣服)", "第一\tdì yī — first", "两\tliǎng — two (before a measure word: 两个人)", "零\tlíng — zero", "百\tbǎi — hundred", "千\tqiān — thousand", "号\thào — day of the month; number (五月三号 = May 3rd)", "它\ttā — it", "您\tnín — you (polite)", "一下\tyíxià — (after a verb) briefly; give it a go (看一下 = take a look)", "完\twán — to finish; done (吃完了 = finished eating)"]}, {"id": "09-hsk3-verbs", "title": "HSK 3 · Verbs", "group": "HSK 3", "glyph": "换", "lines": ["帮忙\tbāng máng — to help; to do a favor", "参加\tcānjiā — to take part in; to attend", "迟到\tchídào — to be late", "打扫\tdǎsǎo — to clean; to sweep", "打算\tdǎsuàn — to plan; to intend", "带\tdài — to bring; to take along", "担心\tdān xīn — to worry", "锻炼\tduànliàn — to exercise; to work out", "发现\tfāxiàn — to discover; to notice", "复习\tfùxí — to review (lessons)", "感冒\tgǎnmào — to catch a cold; a cold", "害怕\thàipà — to be afraid", "换\thuàn — to change; to exchange", "记得\tjìde — to remember", "检查\tjiǎnchá — to check; to examine", "见面\tjiàn miàn — to meet (in person)", "借\tjiè — to borrow; to lend", "解决\tjiějué — to solve; to resolve", "结束\tjiéshù — to end; to finish", "决定\tjuédìng — to decide; decision", "聊天\tliáo tiān — to chat", "了解\tliǎojiě — to understand; to know about", "努力\tnǔlì — to work hard; to make an effort", "请假\tqǐng jià — to ask for time off", "认为\trènwéi — to think; to believe (opinion)", "生气\tshēng qì — to get angry", "提高\ttígāo — to improve; to raise", "同意\ttóngyì — to agree", "忘记\twàngjì — to forget", "需要\txūyào — to need"]}, {"id": "10-hsk3-nouns", "title": "HSK 3 · Nouns", "group": "HSK 3", "glyph": "城", "lines": ["办公室\tbàngōngshì — office", "办法\tbànfǎ — way; method; solution", "比赛\tbǐsài — match; competition", "成绩\tchéngjì — grades; results", "城市\tchéngshì — city", "超市\tchāoshì — supermarket", "厨房\tchúfáng — kitchen", "地方\tdìfang — place", "地铁\tdìtiě — subway; metro", "电梯\tdiàntī — elevator", "电子邮件\tdiànzǐ yóujiàn — email", "环境\thuánjìng — environment; surroundings", "护照\thùzhào — passport", "机会\tjīhuì — opportunity; chance", "季节\tjìjié — season", "会议\thuìyì — meeting; conference", "经理\tjīnglǐ — manager", "客人\tkèrén — guest; customer", "礼物\tlǐwù — gift", "邻居\tlínjū — neighbor", "世界\tshìjiè — world", "同事\ttóngshì — colleague", "图书馆\ttúshūguǎn — library", "文化\twénhuà — culture", "习惯\txíguàn — habit; to be used to", "新闻\txīnwén — news", "银行\tyínháng — bank", "音乐\tyīnyuè — music", "照片\tzhàopiàn — photo", "作业\tzuòyè — homework", "兴趣\txìngqù — interest (对……感兴趣 = to be interested in…)"]}, {"id": "11-hsk3-adjectives", "title": "HSK 3 · Adjectives", "group": "HSK 3", "glyph": "饿", "lines": ["安静\tānjìng — quiet", "饱\tbǎo — full (after eating)", "饿\tè — hungry", "渴\tkě — thirsty", "干净\tgānjìng — clean", "方便\tfāngbiàn — convenient", "简单\tjiǎndān — simple", "健康\tjiànkāng — healthy; health", "聪明\tcōngming — clever; smart", "可爱\tkě'ài — cute; lovely", "年轻\tniánqīng — young", "热情\trèqíng — warm; enthusiastic", "认真\trènzhēn — serious; conscientious", "容易\tróngyì — easy", "舒服\tshūfu — comfortable; feeling well", "满意\tmǎnyì — satisfied", "奇怪\tqíguài — strange; odd", "重要\tzhòngyào — important", "着急\tzháojí — anxious; in a hurry", "新鲜\txīnxiān — fresh"]}, {"id": "12-hsk3-adverbs-connectors", "title": "HSK 3 · Adverbs & Connectors", "group": "HSK 3", "glyph": "把", "lines": ["特别\ttèbié — especially; special", "一定\tyídìng — definitely; must", "一直\tyìzhí — all along; continuously; straight ahead", "经常\tjīngcháng — often", "总是\tzǒngshì — always", "马上\tmǎshàng — right away; immediately", "终于\tzhōngyú — finally; at last", "突然\ttūrán — suddenly", "其实\tqíshí — actually; in fact", "最近\tzuìjìn — recently; lately", "如果\trúguǒ — if", "或者\thuòzhě — or (in statements; use 还是 in questions)", "然后\tránhòu — then; after that", "不但……而且……\tbúdàn… érqiě… — not only… but also…", "除了\tchúle — besides; except for", "只有……才……\tzhǐyǒu… cái… — only if… (then)…", "越来越\tyuè lái yuè — more and more (越来越冷 = colder and colder)", "为了\twèile — in order to; for the sake of", "把\tbǎ — moves the object before the verb (把门关上 = shut the door)", "被\tbèi — passive marker (蛋糕被他吃了 = the cake was eaten by him)"]}]</script>
+<script>
+(function () {
+  const SETS = JSON.parse(document.getElementById("sets-data").textContent);
+  const KEY = "mandarin-quizlet-imported";
+  let done = new Set();
+  try { done = new Set(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch (e) {}
+
+  const total = SETS.reduce((n, s) => n + s.lines.length, 0);
+  document.getElementById("lede").textContent =
+    `${SETS.length} sets, ${total} cards. Copy each set into Quizlet's import box. Each one takes about 30 seconds.`;
+
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify([...done])); } catch (e) {}
+  }
+
+  function updateProgress() {
+    const n = SETS.filter(s => done.has(s.id)).length;
+    document.getElementById("progress-label").textContent = `${n} of ${SETS.length} imported`;
+    document.getElementById("bar-fill").style.width = `${(n / SETS.length) * 100}%`;
+  }
+
+  function flash(btn, label) {
+    const original = btn.dataset.label;
+    btn.textContent = label;
+    clearTimeout(btn._t);
+    btn._t = setTimeout(() => { btn.textContent = original; }, 1800);
+  }
+
+  async function copy(text, btn, fallback) {
+    try {
+      await navigator.clipboard.writeText(text);
+      fallback.hidden = true;
+      flash(btn, "Copied");
+    } catch (e) {
+      fallback.value = text;
+      fallback.hidden = false;
+      fallback.focus();
+      fallback.select();
+      flash(btn, "Press Ctrl+C");
+    }
+  }
+
+  const root = document.getElementById("groups");
+  root.className = "wrap-groups";
+  root.style.display = "grid";
+  root.style.gap = "36px";
+
+  const groups = [];
+  for (const s of SETS) {
+    let g = groups.find(x => x.name === s.group);
+    if (!g) { g = { name: s.group, sets: [] }; groups.push(g); }
+    g.sets.push(s);
+  }
+
+  for (const g of groups) {
+    const section = el("section", "group");
+    const head = el("div", "group-head");
+    head.append(el("h2", null, g.name));
+    const cards = g.sets.reduce((n, s) => n + s.lines.length, 0);
+    head.append(el("span", null, `${g.sets.length} sets · ${cards} cards`));
+    section.append(head);
+
+    for (const s of g.sets) {
+      const row = el("article", "set");
+      if (done.has(s.id)) row.classList.add("is-done");
+
+      const tile = el("div", "tzg");
+      tile.setAttribute("aria-hidden", "true");
+      tile.append(el("span", null, s.glyph));
+
+      const meta = el("div");
+      meta.style.minWidth = "0";
+      meta.append(el("h3", null, s.title));
+      const sample = el("p", "sample");
+      sample.append(el("b", null, `${s.lines.length} cards`));
+      sample.append(document.createTextNode(" · " + s.lines.slice(0, 4).map(l => l.split("\t")[0]).join("  ")));
+      meta.append(sample);
+
+      const actions = el("div", "actions");
+      const fallback = el("textarea", "fallback");
+      fallback.readOnly = true;
+      fallback.hidden = true;
+      fallback.id = `fallback-${s.id}`;
+      fallback.setAttribute("aria-label", `Cards for ${s.title}`);
+
+      const bTitle = el("button", "btn ghost", "Copy title");
+      bTitle.type = "button";
+      bTitle.dataset.label = "Copy title";
+      bTitle.addEventListener("click", () => copy(s.title, bTitle, fallback));
+
+      const bCards = el("button", "btn", "Copy cards");
+      bCards.type = "button";
+      bCards.dataset.label = "Copy cards";
+      bCards.addEventListener("click", () => copy(s.lines.join("\n"), bCards, fallback));
+
+      const label = el("label", "done");
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.id = `done-${s.id}`;
+      box.checked = done.has(s.id);
+      box.addEventListener("change", () => {
+        if (box.checked) done.add(s.id); else done.delete(s.id);
+        row.classList.toggle("is-done", box.checked);
+        save();
+        updateProgress();
+      });
+      label.append(box, document.createTextNode("Imported"));
+      actions.append(bTitle, bCards, label);
+
+      const details = el("details");
+      details.append(el("summary", null, "Preview cards"));
+      const wrap = el("div", "tablewrap");
+      const table = el("table");
+      for (const line of s.lines) {
+        const [term, def] = line.split("\t");
+        const cut = def.indexOf(" — ");
+        const tr = el("tr");
+        tr.append(el("td", "han", term));
+        tr.append(el("td", "py", cut > -1 ? def.slice(0, cut) : ""));
+        tr.append(el("td", null, cut > -1 ? def.slice(cut + 3) : def));
+        table.append(tr);
+      }
+      wrap.append(table);
+      details.append(wrap);
+
+      row.append(tile, meta, actions, details, fallback);
+      section.append(row);
+    }
+    root.append(section);
+  }
+  updateProgress();
+})();
+</script>
