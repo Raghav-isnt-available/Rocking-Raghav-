@@ -71,6 +71,14 @@ h2 { font: 800 clamp(32px, 9vw, 48px)/1 var(--display); margin: 0; text-wrap: ba
 .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
 .dot.fly { background: var(--glow); box-shadow: 0 0 10px var(--glow); }
 .dot.wasp { background: var(--wasp); }
+.dot.gold { background: #ffc828; box-shadow: 0 0 12px #ffc828; }
+.dot.miss { border: 1.5px dashed var(--muted); }
+.dot.gust { width: auto; height: auto; border-radius: 0; color: var(--ink); font: 800 14px/12px var(--display); }
+.rules { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; text-align: left; font-size: 13.5px; line-height: 1.35; color: var(--muted); }
+.rules span { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+.rules .dot { flex: none; transform: translateY(1px); }
+.rules span:last-child { grid-column: 1 / -1; }
+@media (max-width: 380px) { .rules { grid-template-columns: 1fr; } }
 .btns { display: grid; gap: 10px; justify-items: center; }
 button.go {
   font: 800 20px/1 var(--display); color: var(--night); background: var(--glow); border: 0; border-radius: 999px;
@@ -84,7 +92,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 @media (prefers-reduced-motion: reduce) { button.go:active { transform: none; } }
 </style>
 
-<canvas id="c" aria-label="Meadow with fireflies. Tap fireflies to catch them; avoid wasps."></canvas>
+<canvas id="c" aria-label="Meadow with fireflies. Tap lit fireflies to catch them; avoid wasps."></canvas>
 
 <div class="hud" id="hud" hidden>
   <div><span class="pill" id="hudLevel">Level 1</span><span class="pill" id="hudCaught">0 / 15</span></div>
@@ -94,10 +102,16 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 
 <div class="overlay" id="screenTitle">
   <div class="card">
-    <div class="eyebrow">Five nights · each 20% harder</div>
+    <div class="eyebrow">Five nights · each 20% harder · night 5 is ×2.07</div>
     <h1>Firefly Jar</h1>
-    <p>Tap fireflies to catch them before they fade. Catch <b>15</b> in <b>30 seconds</b> to clear a night. Wasps cost a life, and you have three.</p>
-    <div class="legend"><span><i class="dot fly"></i>Firefly: tap</span><span><i class="dot wasp"></i>Wasp: avoid</span></div>
+    <p>Catch <b>20</b> fireflies in <b>30 seconds</b> to clear a night. You have three lives.</p>
+    <div class="rules">
+      <span><i class="dot fly"></i>Firefly +1. Blinks dark, and can't be caught while dark.</span>
+      <span><i class="dot gold"></i>Golden +3. Rare, fast, gone in a flash.</span>
+      <span><i class="dot wasp"></i>Wasp: tapping one costs a life. They hunt and eat fireflies.</span>
+      <span><i class="dot miss"></i>Missed taps cost time off the clock.</span>
+      <span><i class="dot gust">»</i>Gusts shove everything sideways. Watch for the warning.</span>
+    </div>
     <div class="ladder" id="ladderTitle"></div>
     <div class="btns">
       <button class="go" id="btnStart" type="button">Start night 1</button>
@@ -134,22 +148,35 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 (function () {
   "use strict";
   // ---- Rules -------------------------------------------------------------
-  // Each night multiplies difficulty by 1.2: fireflies fly 20% faster, fade 20% faster,
-  // and 20% more of what appears are wasps. Goal, clock and lives stay the same, so the
-  // only thing that changes between nights is that 20%.
+  // Every hazard below has a base strength, and each night multiplies all of them by 1.2,
+  // so night N is exactly 20% harder than night N-1 (night 5 = x2.07 of night 1).
+  // Goal, clock and lives never change.
   var NIGHTS = 5, STEP = 1.2;
-  var GOAL = 15, CLOCK = 30, LIVES = 3, SPAWN_EVERY = 0.7;
-  var BASE = { speed: 0.15, life: 3.4, wasp: 0.12 }; // speed in screen-widths/s (short side), life in s
+  var GOAL = 20, CLOCK = 30, LIVES = 3, SPAWN_EVERY = 0.62, GOLD_EVERY = 7;
+  var BASE = {
+    speed: 0.22,   // firefly flight, short-sides per second
+    life: 2.6,     // seconds a firefly glows before it's gone
+    wasp: 0.18,    // share of spawns that are wasps
+    hunt: 1.6,     // how hard wasps steer toward fireflies (rad/s)
+    dark: 0.22,    // share of each blink cycle a firefly is dark (uncatchable)
+    miss: 0.6,     // seconds lost per tap that hits nothing
+    gust: 0.35,    // gust push, screen-widths per second
+    gustEvery: 7   // seconds between gusts
+  };
   function mult(n) { return Math.pow(STEP, n - 1); }
   function params(n) {
     var m = mult(n);
-    return { m: m, speed: BASE.speed * m, life: BASE.life / m, wasp: Math.min(0.5, BASE.wasp * m) };
+    return {
+      m: m, speed: BASE.speed * m, life: BASE.life / m, wasp: Math.min(0.6, BASE.wasp * m),
+      hunt: BASE.hunt * m, dark: Math.min(0.6, BASE.dark * m), miss: BASE.miss * m,
+      gust: BASE.gust * m, gustEvery: BASE.gustEvery / m
+    };
   }
 
   // ---- Canvas sizing (fold / unfold safe) --------------------------------
-  // Positions are stored as fractions of the screen, sizes as fractions of the short
-  // side, so unfolding from the 5.4" cover screen to the 7.6" inner one mid-night just
-  // stretches the meadow; nothing jumps or resets.
+  // Positions are fractions of the screen and sizes fractions of the short side, so
+  // unfolding from the 5.4" cover screen to the 7.6" inner one mid-night just stretches
+  // the meadow; nothing jumps or resets.
   var cv = document.getElementById("c"), cx = cv.getContext("2d");
   var W = 0, H = 0, S = 0, DPR = 1, bg = null;
   function resize() {
@@ -172,17 +199,14 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       g.fillRect(r() * W, r() * H * 0.7, r() < 0.9 ? 1 : 2, r() < 0.9 ? 1 : 2);
     }
     g.globalAlpha = 1;
-    // moon
     var mx = W * 0.8, my = H * 0.16, mr = S * 0.07;
     var halo = g.createRadialGradient(mx, my, mr * 0.5, mx, my, mr * 4);
     halo.addColorStop(0, "rgba(255,244,200,.22)"); halo.addColorStop(1, "rgba(255,244,200,0)");
     g.fillStyle = halo; g.fillRect(0, 0, W, H);
-    // crescent: the full disc clipped, minus an offset circle (so the glow shows through the bite)
     g.save(); g.beginPath(); g.arc(mx, my, mr, 0, 7); g.clip();
     g.fillStyle = "#f6efcf"; g.beginPath(); g.rect(0, 0, W, H);
     g.arc(mx + mr * 0.42, my - mr * 0.18, mr * 0.92, 0, 7); g.fill("evenodd");
     g.restore();
-    // two layers of grass along the bottom
     [["#121a3d", 0.13, 11], ["#0b1029", 0.08, 23]].forEach(function (L) {
       var rr = rng(L[2]); g.fillStyle = L[0]; g.beginPath(); g.moveTo(0, H);
       var base = H - H * L[1];
@@ -197,33 +221,39 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 
   // ---- State -------------------------------------------------------------
   var state = "title", night = 1, P = params(1);
-  var bugs = [], sparks = [], caught = 0, lives = LIVES, clock = CLOCK, spawnT = 0, totalTime = 0;
+  var bugs = [], sparks = [], texts = [], caught = 0, lives = LIVES, clock = CLOCK;
+  var spawnT = 0, goldT = 0, gustT = 0, gustDir = 1, gustOn = 0, gustWarn = 0, totalTime = 0;
   var shake = 0, flash = 0, last = 0, cleared = 0, sound = true, ac = null;
+  var stats = { misses: 0, eaten: 0, golds: 0 };
   var best = null;
-  try { best = JSON.parse(localStorage.getItem("fireflyJarBest") || "null"); } catch (e) { best = null; }
-  try { cleared = Number(localStorage.getItem("fireflyJarCleared") || 0) || 0; } catch (e) { cleared = 0; }
+  try { best = JSON.parse(localStorage.getItem("fireflyJarBest2") || "null"); } catch (e) { best = null; }
+  try { cleared = Number(localStorage.getItem("fireflyJarCleared2") || 0) || 0; } catch (e) { cleared = 0; }
 
-  var top = function () { return (parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0) + 70; };
+  function topY() { return Math.max(((parseFloat(getComputedStyle(document.documentElement).paddingTop) || 0) + 70) / H, 0.12); }
 
-  function spawn() {
-    var isWasp = Math.random() < P.wasp;
-    var margin = 0.08, t = top() / H;
-    bugs.push({
-      wasp: isWasp,
-      x: margin + Math.random() * (1 - 2 * margin),
-      y: Math.max(t, 0.12) + Math.random() * (0.84 - Math.max(t, 0.12)),
-      a: Math.random() * Math.PI * 2,
-      age: 0,
-      life: isWasp ? P.life * 1.8 : P.life,
-      phase: Math.random() * 6,
-      sp: P.speed * (isWasp ? 1.15 : 1) * (0.8 + Math.random() * 0.4)
-    });
+  function spawn(kind) {
+    var t = topY();
+    var b = {
+      kind: kind, x: 0.08 + Math.random() * 0.84, y: t + Math.random() * (0.84 - t),
+      a: Math.random() * Math.PI * 2, age: 0, phase: Math.random() * 6,
+      blink: 1.1 + Math.random() * 0.7, blinkOff: Math.random() * 2
+    };
+    if (kind === "wasp") { b.life = P.life * 2.2; b.sp = P.speed * 1.1 * (0.85 + Math.random() * 0.3); }
+    else if (kind === "gold") { b.life = Math.max(0.9, 1.9 / P.m); b.sp = P.speed * 1.7; }
+    else { b.life = P.life; b.sp = P.speed * (0.8 + Math.random() * 0.4); }
+    bugs.push(b);
+  }
+  function isDark(b) {
+    if (b.kind !== "fly") return false;
+    return ((b.age + b.blinkOff) % b.blink) / b.blink < P.dark;
   }
 
   function startNight(n) {
     night = n; P = params(n);
-    bugs = []; sparks = []; caught = 0; lives = LIVES; clock = CLOCK; spawnT = 0; shake = 0; flash = 0;
-    for (var i = 0; i < 3; i++) spawn();
+    bugs = []; sparks = []; texts = []; caught = 0; lives = LIVES; clock = CLOCK;
+    spawnT = 0; goldT = 0; gustT = 0; gustOn = 0; gustWarn = 0; shake = 0; flash = 0;
+    stats = { misses: 0, eaten: 0, golds: 0 };
+    for (var i = 0; i < 3; i++) spawn("fly");
     state = "play"; show(null); setHud();
   }
 
@@ -232,31 +262,45 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     if (state !== "play") return;
     e.preventDefault();
     var px = e.clientX, py = e.clientY, hit = null, bestD = 1e9;
+    var reach = Math.max(26, S * 0.07);
     for (var i = 0; i < bugs.length; i++) {
-      var b = bugs[i], dx = b.x * W - px, dy = b.y * H - py, d = Math.sqrt(dx * dx + dy * dy);
-      var reach = Math.max(28, S * 0.075); // finger-sized, a bit bigger than the drawn bug
+      var b = bugs[i];
+      if (isDark(b)) continue; // dark fireflies can't be caught
+      var dx = b.x * W - px, dy = b.y * H - py, d = Math.sqrt(dx * dx + dy * dy);
       if (d < reach && d < bestD) { hit = i; bestD = d; }
     }
-    if (hit === null) return;
+    if (hit === null) {
+      clock = Math.max(0, clock - P.miss); stats.misses++;
+      float(px, py, "−" + P.miss.toFixed(1) + "s", "#ff9a7a");
+      beep(180, 0.06, "triangle", 0.06);
+      setClock();
+      return;
+    }
     var bug = bugs.splice(hit, 1)[0];
-    if (bug.wasp) {
+    if (bug.kind === "wasp") {
       lives--; shake = 0.35; flash = 1; beep(110, 0.18, "square", 0.08);
+      float(px, py, "stung", "#ff6a3d");
       if (lives <= 0) return endNight(false, "stung");
     } else {
-      caught++; burst(bug.x * W, bug.y * H); beep(520 + caught * 28, 0.09, "sine", 0.12);
+      var gain = bug.kind === "gold" ? 3 : 1;
+      caught = Math.min(GOAL, caught + gain);
+      if (gain === 3) { stats.golds++; float(px, py, "+3", "#ffd23d"); beep(880, 0.14, "sine", 0.12); }
+      else beep(520 + caught * 22, 0.09, "sine", 0.12);
+      burst(bug.x * W, bug.y * H, gain === 3 ? "#ffd23d" : "#fff4b0", gain === 3 ? 26 : 14);
       if (caught >= GOAL) return endNight(true);
     }
     setHud();
   }, { passive: false });
 
-  function burst(x, y) {
-    for (var i = 0; i < 14; i++) {
+  function burst(x, y, color, n) {
+    for (var i = 0; i < n; i++) {
       var a = Math.random() * Math.PI * 2, v = S * (0.15 + Math.random() * 0.35);
-      sparks.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: 0.45 + Math.random() * 0.3 });
+      sparks.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: 0.45 + Math.random() * 0.3, c: color });
     }
   }
+  function float(x, y, text, color) { texts.push({ x: x, y: y, text: text, c: color, t: 0 }); }
 
-  // ---- Sound (starts from the Start button, as browsers require) ---------
+  // ---- Sound ---------------------------------------------------------------
   function beep(f, dur, type, vol) {
     if (!sound || !ac) return;
     try {
@@ -279,18 +323,55 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     requestAnimationFrame(frame);
   }
 
+  function angDiff(a, b) { var d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; }
+
   function update(dt) {
     clock -= dt; totalTime += dt;
     if (clock <= 0) { clock = 0; return endNight(false, "time"); }
+
     spawnT += dt;
-    while (spawnT >= SPAWN_EVERY) { spawnT -= SPAWN_EVERY; spawn(); }
-    var minY = Math.max(top() / H, 0.1);
+    while (spawnT >= SPAWN_EVERY) { spawnT -= SPAWN_EVERY; spawn(Math.random() < P.wasp ? "wasp" : "fly"); }
+    goldT += dt;
+    if (goldT >= GOLD_EVERY) { goldT = 0; if (Math.random() < 0.8) spawn("gold"); }
+
+    // gusts: 0.8 s warning, then 1 s of wind
+    gustT += dt;
+    if (gustWarn <= 0 && gustOn <= 0 && gustT >= P.gustEvery) {
+      gustT = 0; gustWarn = 0.8; gustDir = Math.random() < 0.5 ? -1 : 1; beep(70, 0.5, "sawtooth", 0.03);
+    }
+    if (gustWarn > 0) { gustWarn -= dt; if (gustWarn <= 0) gustOn = 1; }
+    var wind = 0;
+    if (gustOn > 0) { gustOn -= dt; wind = gustDir * P.gust * Math.sin(Math.PI * Math.max(0, gustOn)); }
+
+    var minY = topY(), flies = bugs.filter(function (b) { return b.kind === "fly"; });
     for (var i = bugs.length - 1; i >= 0; i--) {
       var b = bugs[i];
       b.age += dt;
       if (b.age >= b.life) { bugs.splice(i, 1); continue; }
-      b.a += (Math.random() - 0.5) * (b.wasp ? 7 : 4) * dt;
-      b.x += Math.cos(b.a) * b.sp * S * dt / W;
+      if (b.kind === "wasp" && flies.length) {
+        // hunt the nearest firefly
+        var tgt = null, bd = 1e9;
+        for (var k = 0; k < flies.length; k++) {
+          var f = flies[k], ddx = (f.x - b.x) * W, ddy = (f.y - b.y) * H, dd = ddx * ddx + ddy * ddy;
+          if (dd < bd) { bd = dd; tgt = f; }
+        }
+        if (tgt) {
+          var want = Math.atan2((tgt.y - b.y) * H, (tgt.x - b.x) * W);
+          b.a += Math.max(-1, Math.min(1, angDiff(b.a, want))) * P.hunt * dt;
+          if (Math.sqrt(bd) < S * 0.035) {
+            var idx = bugs.indexOf(tgt);
+            if (idx >= 0) {
+              bugs.splice(idx, 1); if (idx < i) i--;
+              flies.splice(flies.indexOf(tgt), 1); stats.eaten++;
+              burst(tgt.x * W, tgt.y * H, "#ff9a7a", 8);
+            }
+          }
+        }
+        b.a += (Math.random() - 0.5) * 2 * dt;
+      } else {
+        b.a += (Math.random() - 0.5) * (b.kind === "gold" ? 9 : 4) * dt;
+      }
+      b.x += (Math.cos(b.a) * b.sp * S / W + wind) * dt;
       b.y += Math.sin(b.a) * b.sp * S * dt / H;
       if (b.x < 0.04 || b.x > 0.96) { b.a = Math.PI - b.a; b.x = Math.min(0.96, Math.max(0.04, b.x)); }
       if (b.y < minY || b.y > 0.86) { b.a = -b.a; b.y = Math.min(0.86, Math.max(minY, b.y)); }
@@ -299,6 +380,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       var s = sparks[j]; s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 0.92; s.vy *= 0.92;
       if (s.t > s.life) sparks.splice(j, 1);
     }
+    for (var q = texts.length - 1; q >= 0; q--) { texts[q].t += dt; if (texts[q].t > 0.8) texts.splice(q, 1); }
     shake = Math.max(0, shake - dt); flash = Math.max(0, flash - dt * 3);
     setClock();
   }
@@ -309,17 +391,25 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     cx.setTransform(DPR, 0, 0, DPR, sx * DPR, sy * DPR);
     if (bg) cx.drawImage(bg, 0, 0, W, H);
     var r = S * 0.022;
-    // idle fireflies on the title / break screens so the meadow is never empty
+    if (state === "play" && (gustWarn > 0 || gustOn > 0)) drawGust(t);
     var list = state === "play" ? bugs : ambient(t);
     for (var i = 0; i < list.length; i++) {
       var b = list[i], x = b.x * W, y = b.y * H;
       var fade = state === "play" ? Math.min(1, (b.life - b.age) / (b.life * 0.35)) : 1;
-      if (b.wasp) drawWasp(x, y, r, b, t, fade); else drawFly(x, y, r, b, t, fade);
+      if (b.kind === "wasp") drawWasp(x, y, r, b, t, fade);
+      else drawFly(x, y, r, b, t, fade, b.kind === "gold", state === "play" && isDark(b));
     }
     for (var j = 0; j < sparks.length; j++) {
       var s = sparks[j], k = 1 - s.t / s.life;
-      cx.globalAlpha = k; cx.fillStyle = "#fff4b0";
+      cx.globalAlpha = k; cx.fillStyle = s.c;
       cx.beginPath(); cx.arc(s.x, s.y, Math.max(1, r * 0.22 * k), 0, 7); cx.fill();
+    }
+    cx.font = "800 " + Math.round(S * 0.05) + "px 'Baloo 2', system-ui, sans-serif";
+    cx.textAlign = "center";
+    for (var q = 0; q < texts.length; q++) {
+      var tx = texts[q];
+      cx.globalAlpha = 1 - tx.t / 0.8; cx.fillStyle = tx.c;
+      cx.fillText(tx.text, tx.x, tx.y - S * 0.04 - tx.t * S * 0.12);
     }
     cx.globalAlpha = 1;
     if (flash > 0) {
@@ -330,16 +420,42 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     cx.restore();
   }
 
-  function drawFly(x, y, r, b, t, fade) {
-    var pulse = 0.65 + 0.35 * Math.sin(t * 6 + b.phase);
+  function drawGust(t) {
+    var warn = gustWarn > 0, a = warn ? 0.5 + 0.5 * Math.sin(t * 20) : 0.6;
+    cx.fillStyle = "rgba(200,215,255," + (0.9 * a) + ")";
+    cx.font = "800 " + Math.round(S * 0.06) + "px 'Baloo 2', system-ui, sans-serif";
+    cx.textAlign = "center";
+    cx.fillText(warn ? (gustDir > 0 ? "gust  » » »" : "« « «  gust") : "", W / 2, H * 0.9);
+    if (!warn) {
+      cx.strokeStyle = "rgba(200,215,255,.28)"; cx.lineWidth = 1.5;
+      for (var i = 0; i < 14; i++) {
+        var yy = ((i * 0.071 + 0.13) % 0.8 + 0.1) * H;
+        var xx = (((t * 1.6 * gustDir + i * 0.37) % 1) + 1) % 1 * W;
+        cx.beginPath(); cx.moveTo(xx, yy); cx.lineTo(xx - gustDir * S * 0.18, yy); cx.stroke();
+      }
+    }
+  }
+
+  function drawFly(x, y, r, b, t, fade, gold, dark) {
+    var pulse = 0.65 + 0.35 * Math.sin(t * (gold ? 12 : 6) + b.phase);
     var a = Math.max(0, fade) * pulse;
-    var g = cx.createRadialGradient(x, y, 0, x, y, r * 4.2);
-    g.addColorStop(0, "rgba(255,240,150," + (0.85 * a) + ")");
-    g.addColorStop(0.35, "rgba(255,225,92," + (0.35 * a) + ")");
-    g.addColorStop(1, "rgba(255,225,92,0)");
-    cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, r * 4.2, 0, 7); cx.fill();
+    var col = gold ? "255,200,40" : "255,225,92", core = gold ? "#ffe9a0" : "#fffbe0";
+    if (dark) {
+      // dark phase: just a faint outline, no glow
+      cx.globalAlpha = 0.55 * Math.max(0.2, fade);
+      cx.strokeStyle = "#8d94c4"; cx.lineWidth = 1.2;
+      cx.beginPath(); cx.arc(x, y, r * 0.7, 0, 7); cx.stroke();
+      cx.globalAlpha = 1;
+      return;
+    }
+    var R = gold ? r * 5.2 : r * 4.2;
+    var g = cx.createRadialGradient(x, y, 0, x, y, R);
+    g.addColorStop(0, "rgba(" + col + "," + (0.9 * a) + ")");
+    g.addColorStop(0.35, "rgba(" + col + "," + (0.38 * a) + ")");
+    g.addColorStop(1, "rgba(" + col + ",0)");
+    cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, R, 0, 7); cx.fill();
     cx.globalAlpha = Math.max(0.15, fade);
-    cx.fillStyle = "#fffbe0"; cx.beginPath(); cx.arc(x, y, r * 0.7, 0, 7); cx.fill();
+    cx.fillStyle = core; cx.beginPath(); cx.arc(x, y, r * (gold ? 0.85 : 0.7), 0, 7); cx.fill();
     cx.fillStyle = "#2b2a3d"; cx.beginPath(); cx.ellipse(x - Math.cos(b.a) * r * 0.9, y - Math.sin(b.a) * r * 0.9, r * 0.55, r * 0.4, b.a, 0, 7); cx.fill();
     cx.globalAlpha = 1;
   }
@@ -363,7 +479,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 
   var amb = [];
   function ambient(t) {
-    if (!amb.length) for (var i = 0; i < 9; i++) amb.push({ x0: Math.random(), y0: 0.2 + Math.random() * 0.6, phase: Math.random() * 6, a: 0, wasp: i === 4 });
+    if (!amb.length) for (var i = 0; i < 9; i++) amb.push({ x0: Math.random(), y0: 0.2 + Math.random() * 0.6, phase: Math.random() * 6, a: 0, kind: i === 4 ? "wasp" : i === 7 ? "gold" : "fly" });
     amb.forEach(function (b) {
       b.x = b.x0 + Math.sin(t * 0.4 + b.phase) * 0.06;
       b.y = b.y0 + Math.cos(t * 0.33 + b.phase * 2) * 0.05;
@@ -379,7 +495,6 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     var playing = id === null;
     $("hud").hidden = !playing; $("bar").hidden = !playing;
   }
-
   function ladder(el, current) {
     var html = "";
     for (var n = 1; n <= NIGHTS; n++) {
@@ -388,7 +503,6 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     }
     $(el).innerHTML = html;
   }
-
   function setHud() {
     $("hudLevel").textContent = "Night " + night + "/" + NIGHTS;
     $("hudCaught").textContent = caught + " / " + GOAL;
@@ -398,8 +512,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     setClock();
   }
   function setClock() {
-    var s = Math.ceil(clock);
-    var el = $("hudTime");
+    var s = Math.ceil(clock), el = $("hudTime");
     if (el.textContent !== String(s)) el.textContent = s;
     el.classList.toggle("low", s <= 5);
   }
@@ -409,10 +522,11 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     night = n; state = "intro";
     $("introEyebrow").textContent = "Night " + n + " of " + NIGHTS;
     $("introTitle").textContent = "Difficulty ×" + p.m.toFixed(2);
-    $("introText").innerHTML = n === 1
-      ? "Catch <b>" + GOAL + "</b> fireflies in <b>" + CLOCK + "s</b>. Each one glows for about <b>" + p.life.toFixed(1) + "s</b>."
-      : "20% harder than night " + (n - 1) + ": fireflies fly faster, glow for only <b>" + p.life.toFixed(1) +
-        "s</b>, and about <b>" + Math.round(p.wasp * 100) + "%</b> of bugs are wasps.";
+    $("introText").innerHTML =
+      (n === 1 ? "" : "Everything is 20% worse than night " + (n - 1) + ". ") +
+      "Fireflies glow <b>" + p.life.toFixed(1) + "s</b> and are dark <b>" + Math.round(p.dark * 100) + "%</b> of the time. " +
+      "<b>" + Math.round(p.wasp * 100) + "%</b> of bugs are wasps. A missed tap costs <b>" + p.miss.toFixed(1) + "s</b>. " +
+      "Gusts every <b>" + p.gustEvery.toFixed(1) + "s</b>.";
     ladder("ladderIntro", n);
     show("screenIntro");
     setTimeout(function () { $("btnGo").focus(); }, 0);
@@ -423,34 +537,35 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     show("screenEnd");
     if (won) {
       cleared = Math.max(cleared, night);
-      try { localStorage.setItem("fireflyJarCleared", String(cleared)); } catch (e) {}
+      try { localStorage.setItem("fireflyJarCleared2", String(cleared)); } catch (e) {}
     }
     var final = won && night === NIGHTS;
+    var line = "<div><b>" + stats.misses + "</b>missed taps</div><div><b>" + stats.eaten + "</b>eaten by wasps</div><div><b>" + stats.golds + "</b>golden</div>";
     if (final) {
       var t = Math.round(totalTime);
       var isBest = best === null || t < best;
-      if (isBest) { best = t; try { localStorage.setItem("fireflyJarBest", String(t)); } catch (e) {} }
+      if (isBest) { best = t; try { localStorage.setItem("fireflyJarBest2", String(t)); } catch (e) {} }
       $("endEyebrow").textContent = "All five nights cleared";
       $("endTitle").textContent = "Jar full";
-      $("endText").textContent = isBest ? "A new best time. The last night was twice as hard as the first." : "You beat night 5, which was twice as hard as night 1.";
-      $("endStats").innerHTML = "<div><b>" + t + "s</b>total</div><div><b>" + best + "s</b>best</div>";
+      $("endText").textContent = (isBest ? "New best: " : "Total: ") + t + "s across all five nights (best " + best + "s).";
+      $("endStats").innerHTML = line;
       $("btnEnd").textContent = "Play again";
       $("btnEnd").onclick = function () { totalTime = 0; intro(1); };
       beep(660, 0.12, "sine", 0.12); setTimeout(function () { beep(880, 0.2, "sine", 0.12); }, 130);
     } else if (won) {
-      $("endEyebrow").textContent = "Night " + night + " cleared";
+      $("endEyebrow").textContent = "Night " + night + " cleared · " + Math.ceil(clock) + "s to spare";
       $("endTitle").textContent = caught + " caught";
-      $("endText").textContent = "Next night: everything moves 20% faster.";
-      $("endStats").innerHTML = "<div><b>" + Math.ceil(clock) + "s</b>to spare</div><div><b>" + lives + "</b>lives left</div>";
+      $("endText").textContent = "Next night every hazard gets 20% worse.";
+      $("endStats").innerHTML = line;
       $("btnEnd").textContent = "Night " + (night + 1);
       $("btnEnd").onclick = function () { intro(night + 1); };
     } else {
       $("endEyebrow").textContent = "Night " + night + " · ×" + P.m.toFixed(2);
       $("endTitle").textContent = why === "stung" ? "Stung out" : "Time's up";
       $("endText").textContent = why === "stung"
-        ? "Three wasps got you. Watch for the orange ones with stripes."
-        : "You caught " + caught + " of " + GOAL + ". Tap the brightest ones first; fading ones are about to vanish.";
-      $("endStats").innerHTML = "";
+        ? "Three wasps got you. Let them chase fireflies and tap the ones they're not near."
+        : "You caught " + caught + " of " + GOAL + ". Wait for a firefly to light up before you tap: misses eat the clock.";
+      $("endStats").innerHTML = line;
       $("btnEnd").textContent = "Try night " + night + " again";
       $("btnEnd").onclick = function () { intro(night); };
     }
@@ -458,8 +573,9 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     setTimeout(function () { $("btnEnd").focus(); }, 0);
   }
 
+  function goHandler() { ensureAudio(); if (ac && ac.resume) ac.resume(); startNight(night); }
   $("btnStart").onclick = function () { ensureAudio(); totalTime = 0; intro(1); };
-  $("btnGo").onclick = function () { ensureAudio(); if (ac && ac.resume) ac.resume(); startNight(night); };
+  $("btnGo").onclick = goHandler;
   $("btnMenu").onclick = function () { state = "title"; ladder("ladderTitle", 0); show("screenTitle"); };
   $("btnSound").onclick = function () {
     sound = !sound; $("btnSound").textContent = "Sound: " + (sound ? "on" : "off");
@@ -467,7 +583,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   };
   try { if (localStorage.getItem("fireflyJarSound") === "0") { sound = false; $("btnSound").textContent = "Sound: off"; } } catch (e) {}
 
-  // Pause when the app goes to the background (or the phone is closed).
+  // Pause when the app goes to the background or the phone is closed.
   document.addEventListener("visibilitychange", function () {
     if (document.hidden && state === "play") {
       state = "paused";
@@ -479,7 +595,6 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       show("screenIntro");
     }
   });
-  var goHandler = $("btnGo").onclick;
 
   window.addEventListener("resize", resize);
   resize();
