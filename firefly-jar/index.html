@@ -61,6 +61,8 @@ h1 { font: 800 clamp(44px, 13vw, 76px)/.9 var(--display); margin: 0; color: var(
 h2 { font: 800 clamp(32px, 9vw, 48px)/1 var(--display); margin: 0; text-wrap: balance; }
 .card p { margin: 0; color: var(--muted); max-width: 34ch; justify-self: center; }
 .card p b { color: var(--ink); font-weight: 600; }
+.notes span { white-space: nowrap; }
+.notes { display: block; margin-top: 10px; font-size: 12.5px; color: var(--muted); opacity: .85; font-variant-numeric: tabular-nums; }
 .ladder { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; font-variant-numeric: tabular-nums; }
 .ladder div { border: 1px solid var(--line); border-radius: 10px; padding: 8px 2px 6px; font: 700 12px/1.2 var(--display); color: var(--muted); }
 .ladder div b { display: block; font-size: 17px; color: var(--ink); }
@@ -115,9 +117,9 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 
 <div class="overlay" id="screenTitle">
   <div class="card">
-    <div class="eyebrow">Five nights · each 20% harder · night 5 is ×2.07</div>
+    <div class="eyebrow">Five summer nights on Wren Hill</div>
     <h1>Firefly Jar</h1>
-    <p>Catch <b>20</b> fireflies in <b>30 seconds</b> to clear a night. You have three lives.</p>
+    <p>The old lantern on the hill needs fireflies before the solstice festival. Each night, catch <b>20</b> before the moon sets, about <b>30 seconds</b>. Three stings and you're done for the night.</p>
     <div class="rules">
       <span><i class="dot fly"></i>Firefly +1. Blinks dark, and can't be caught while dark.</span>
       <span><i class="dot gold"></i>Golden +3. Rare, fast, gone in a flash.</span>
@@ -549,7 +551,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   }
   function renderHistory(el, n, freshTop) {
     var list = history[n] || [];
-    if (!list.length) { $(el).innerHTML = '<div class="hist-empty">No attempts at night ' + n + " yet.</div>"; return; }
+    if (!list.length) { $(el).innerHTML = '<div class="hist-empty">You haven\'t tried this night yet.</div>'; return; }
     var bestWin = null;
     list.forEach(function (a) { if (a.won && (bestWin === null || a.used < bestWin)) bestWin = a.used; });
     var rows = list.map(function (a, i) {
@@ -589,22 +591,43 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     el.classList.toggle("low", s <= 5);
   }
 
+  // The story of the five nights. Each one is 20% harder than the last; the numbers sit
+  // underneath as a small "tonight" line.
+  var STORY = [
+    { name: "The First Warm Night",
+      text: "Every summer the old lantern on Wren Hill goes dark, and every summer someone has to fill it again. Five nights until the solstice festival. Tonight the meadow is humming and the fireflies drift slow and low. Twenty for the jar before the moon clears the willow.",
+      won: "The jar hums on the porch rail. Grandma says she heard buzzing out in the clover." },
+    { name: "Wasps in the Clover",
+      text: "The wasps have found the clover patch, and fireflies are their supper. They'll go straight for the brightest ones. Get there first, and keep your fingers clear of the stingers.",
+      won: "Twenty more for the lantern. Past the ridge, the sky has gone the colour of a bruise." },
+    { name: "The Wind Turns",
+      text: "A storm is gathering past the ridge. Gusts roll down through the grass with only a breath of warning, and the fireflies have started blinking shy, hiding in the dark between flashes.",
+      won: "The wind drops for a moment. The lantern is half full, and the fireflies are getting harder to find." },
+    { name: "The Dark Between",
+      text: "The fireflies glow for barely a heartbeat now, and the dark between their flashes keeps stretching. Every grab at empty air costs you time you don't have. Wait for the light.",
+      won: "One night left. Down in the village they're already hanging paper streamers." },
+    { name: "Solstice Eve",
+      text: "The last night before the festival. The swarm is fast, the wasps are bold and the wind won't quit. Twenty lights, or Wren Hill stays dark this year.",
+      won: "The lantern on Wren Hill burns gold for the festival." }
+  ];
+
   function intro(n) {
-    var p = params(n);
+    var p = params(n), st = STORY[n - 1];
     night = n; state = "intro";
-    $("introEyebrow").textContent = "Night " + n + " of " + NIGHTS;
-    $("introTitle").textContent = "Difficulty ×" + p.m.toFixed(2);
-    $("introText").innerHTML =
-      (n === 1 ? "" : "Everything is 20% worse than night " + (n - 1) + ". ") +
-      "Fireflies glow <b>" + p.life.toFixed(1) + "s</b> and are dark <b>" + Math.round(p.dark * 100) + "%</b> of the time. " +
-      "<b>" + Math.round(p.wasp * 100) + "%</b> of bugs are wasps. A missed tap costs <b>" + p.miss.toFixed(1) + "s</b>. " +
-      "Gusts every <b>" + p.gustEvery.toFixed(1) + "s</b>.";
+    $("introEyebrow").textContent = "Night " + n + " of " + NIGHTS + " · ×" + p.m.toFixed(2);
+    $("introTitle").textContent = st.name;
+    $("introText").innerHTML = esc(st.text) +
+      '<span class="notes">' + ["Tonight: glow " + p.life.toFixed(1) + "s", "dark " + Math.round(p.dark * 100) + "%",
+        "wasps " + Math.round(p.wasp * 100) + "%", "miss −" + p.miss.toFixed(1) + "s", "gusts every " + p.gustEvery.toFixed(1) + "s"]
+        .map(function (x) { return "<span>" + x + "</span>"; }).join(" · ") + "</span>";
     ladder("ladderIntro", n);
     renderHistory("histIntro", n, false);
     $("btnPick").hidden = false;
     show("screenIntro");
     setTimeout(function () { $("btnGo").focus(); }, 0);
   }
+  function esc(t) { return t.replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+
 
   function endNight(won, why) {
     state = "end";
@@ -616,40 +639,40 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       try { localStorage.setItem("fireflyJarCleared2", String(cleared)); } catch (e) {}
     }
     var final = won && night === NIGHTS && runFull;
-    var line = "<div><b>" + stats.misses + "</b>missed taps</div><div><b>" + stats.eaten + "</b>eaten by wasps</div><div><b>" + stats.golds + "</b>golden</div>";
+    var line = "<div><b>" + stats.misses + "</b>grabs at air</div><div><b>" + stats.eaten + "</b>lost to wasps</div><div><b>" + stats.golds + "</b>golden ones</div>";
     if (final) {
       var t = Math.round(totalTime);
       var isBest = best === null || t < best;
       if (isBest) { best = t; try { localStorage.setItem("fireflyJarBest2", String(t)); } catch (e) {} }
-      $("endEyebrow").textContent = "All five nights cleared";
-      $("endTitle").textContent = "Jar full";
-      $("endText").textContent = (isBest ? "New best: " : "Total: ") + t + "s across all five nights (best " + best + "s).";
+      $("endEyebrow").textContent = "Solstice · all five nights";
+      $("endTitle").textContent = "The lantern is lit";
+      $("endText").textContent = STORY[4].won + " " + (isBest ? "Your fastest summer yet: " : "This summer took ") + t + "s (best " + best + "s).";
       $("endStats").innerHTML = line;
       $("btnEnd").textContent = "Play again";
       $("btnEnd").onclick = function () { totalTime = 0; runFull = true; intro(1); };
       beep(660, 0.12, "sine", 0.12); setTimeout(function () { beep(880, 0.2, "sine", 0.12); }, 130);
     } else if (won && night === NIGHTS) {
-      $("endEyebrow").textContent = "Night 5 cleared";
-      $("endTitle").textContent = "Jar full";
-      $("endText").textContent = "Start from night 1 and clear all five in one go to set a best total time.";
+      $("endEyebrow").textContent = "Solstice Eve cleared";
+      $("endTitle").textContent = "The lantern is lit";
+      $("endText").textContent = STORY[4].won + " Play the whole summer from the first night to set a best time.";
       $("endStats").innerHTML = line;
       $("btnEnd").textContent = "Play from night 1";
       $("btnEnd").onclick = function () { totalTime = 0; runFull = true; intro(1); };
     } else if (won) {
-      $("endEyebrow").textContent = "Night " + night + " cleared · " + Math.ceil(clock) + "s to spare";
-      $("endTitle").textContent = caught + " caught";
-      $("endText").textContent = "Next night every hazard gets 20% worse.";
+      $("endEyebrow").textContent = STORY[night - 1].name + " · " + Math.ceil(clock) + "s to spare";
+      $("endTitle").textContent = "Jar full";
+      $("endText").textContent = STORY[night - 1].won;
       $("endStats").innerHTML = line;
-      $("btnEnd").textContent = "Night " + (night + 1);
+      $("btnEnd").textContent = "On to night " + (night + 1);
       $("btnEnd").onclick = function () { intro(night + 1); };
     } else {
-      $("endEyebrow").textContent = "Night " + night + " · ×" + P.m.toFixed(2);
-      $("endTitle").textContent = why === "stung" ? "Stung out" : "Time's up";
+      $("endEyebrow").textContent = STORY[night - 1].name;
+      $("endTitle").textContent = why === "stung" ? "Stung out" : "The moon set";
       $("endText").textContent = why === "stung"
-        ? "Three wasps got you. Let them chase fireflies and tap the ones they're not near."
-        : "You caught " + caught + " of " + GOAL + ". Wait for a firefly to light up before you tap: misses eat the clock.";
+        ? "Three stings, and Grandma calls you in to ice your hand. The wasps only want the fireflies; take the ones they aren't chasing."
+        : "The moon slipped behind the willow with " + caught + " in the jar. The fireflies come to a steady hand: wait for the light, then grab.";
       $("endStats").innerHTML = line;
-      $("btnEnd").textContent = "Try night " + night + " again";
+      $("btnEnd").textContent = "Try " + STORY[night - 1].name + " again";
       $("btnEnd").onclick = function () { intro(night); };
     }
     ladder("ladderEnd", final ? 0 : night);
