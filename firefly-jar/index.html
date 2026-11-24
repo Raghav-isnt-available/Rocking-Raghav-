@@ -62,8 +62,7 @@ h2 { font: 800 clamp(32px, 9vw, 48px)/1 var(--display); margin: 0; text-wrap: ba
 .card p { margin: 0; color: var(--muted); max-width: 34ch; justify-self: center; }
 .card p b { color: var(--ink); font-weight: 600; }
 .notes span { white-space: nowrap; }
-.new { display: block; margin-top: 10px; color: var(--glow-soft); }
-.new b { color: var(--glow); }
+.card p b { color: var(--glow-soft); }
 .notes { display: block; margin-top: 10px; font-size: 12.5px; color: var(--muted); opacity: .85; font-variant-numeric: tabular-nums; }
 .ladder { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; font-variant-numeric: tabular-nums; }
 .ladder div { border: 1px solid var(--line); border-radius: 10px; padding: 8px 2px 6px; font: 700 12px/1.2 var(--display); color: var(--muted); }
@@ -169,26 +168,27 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 (function () {
   "use strict";
   // ---- Rules -------------------------------------------------------------
-  // Each night adds one new idea, introduced by the story:
-  //   1  a few wasps; now and then one bumps into a firefly and eats it
+  // Each night brings in one new idea, told by the story:
+  //   1  a few wasps; now and then one blunders into a firefly and eats it
   //   2  a nest in the oak releases wasps, and storm gusts blow fireflies toward it
   //   3  fireflies blink dark to hide; wasps can't eat (and you can't catch) a dark one
-  //   4  wasps stop drifting and chase lit fireflies
+  //   4  wasps chase lit fireflies, and a second nest wakes in the beech
   //   5  everything at once
-  // The basics (firefly speed, glow time, share of wasps) get 20% harder every night.
-  // New hazards arrive at a fixed strength instead of compounding.
+  // Every number, and every hazard once it has arrived, is multiplied by 1.2 per night.
   var NIGHTS = 5, STEP = 1.2;
   var GOAL = 20, CLOCK = 30, LIVES = 3, SPAWN_EVERY = 0.62, GOLD_EVERY = 7;
-  var MISS = 0.6, GAIN = 0.2, GOLD_GAIN = 0.6;          // seconds lost per miss / won per catch
-  var BASE = { speed: 0.17, life: 3.0, wasp: 0.10 };    // speed in short-sides per second
-  var NEST = { x: 0.85, y: 0.44 };                      // the nest in the oak (screen fractions)
+  var GAIN = 0.2;                                       // seconds back per catch
+  var BASE = { speed: 0.19, life: 2.8, wasp: 0.12, miss: 0.6, gust: 0.4, gustEvery: 7, dark: 0.22, hunt: 1.6 };
+  var NESTS = [{ x: 0.85, y: 0.44 }, { x: 0.15, y: 0.47 }]; // oak (right), beech (left)
   function mult(n) { return Math.pow(STEP, n - 1); }
   function params(n) {
     var m = mult(n);
     return {
-      m: m, speed: BASE.speed * m, life: BASE.life / m, wasp: Math.min(0.5, BASE.wasp * m),
-      nest: n >= 2, gust: n >= 2 ? 0.45 : 0, gustEvery: 6,
-      dark: n >= 3 ? 0.3 : 0, hunt: n >= 4 ? 1.8 : 0
+      m: m, speed: BASE.speed * m, life: BASE.life / m, wasp: Math.min(0.5, BASE.wasp * m), miss: BASE.miss * m,
+      nests: n >= 4 ? 2 : n >= 2 ? 1 : 0,
+      gust: n >= 2 ? BASE.gust * m : 0, gustEvery: BASE.gustEvery / m,
+      dark: n >= 3 ? Math.min(0.6, BASE.dark * m) : 0,
+      hunt: n >= 4 ? BASE.hunt * m : 0
     };
   }
 
@@ -218,7 +218,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       g.fillRect(r() * W, r() * H * 0.7, r() < 0.9 ? 1 : 2, r() < 0.9 ? 1 : 2);
     }
     g.globalAlpha = 1;
-    var mx = W * 0.8, my = H * 0.16, mr = S * 0.07;
+    var mx = W * 0.56, my = H * 0.17, mr = S * 0.065;
     var halo = g.createRadialGradient(mx, my, mr * 0.5, mx, my, mr * 4);
     halo.addColorStop(0, "rgba(255,244,200,.22)"); halo.addColorStop(1, "rgba(255,244,200,0)");
     g.fillStyle = halo; g.fillRect(0, 0, W, H);
@@ -226,15 +226,39 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     g.fillStyle = "#f6efcf"; g.beginPath(); g.rect(0, 0, W, H);
     g.arc(mx + mr * 0.42, my - mr * 0.18, mr * 0.92, 0, 7); g.fill("evenodd");
     g.restore();
-    // the old oak at the meadow's right edge (its nest is drawn live, from night 2)
-    var tx = W * 0.95, tc = H * 0.3, tr = S * 0.2;
-    g.fillStyle = "#0d1330";
-    g.beginPath(); g.moveTo(tx - S * 0.035, H); g.lineTo(tx - S * 0.02, tc); g.lineTo(tx + S * 0.03, tc); g.lineTo(tx + S * 0.05, H); g.fill();
-    g.lineWidth = S * 0.018; g.strokeStyle = "#0d1330"; g.lineCap = "round";
-    g.beginPath(); g.moveTo(tx, H * 0.44); g.quadraticCurveTo(tx - S * 0.08, H * 0.4, NEST.x * W - S * 0.01, NEST.y * H - S * 0.07); g.stroke();
-    [[0, 0, 1], [-0.7, 0.25, 0.75], [0.3, -0.45, 0.8], [-0.45, -0.35, 0.7], [0.6, 0.3, 0.7]].forEach(function (c) {
-      g.beginPath(); g.arc(tx + c[0] * tr, tc + c[1] * tr, tr * c[2], 0, 7); g.fill();
+    // forest: tree lines tall at the edges and low in the middle, framing the meadow
+    var meadow = g.createLinearGradient(0, H * 0.62, 0, H);
+    meadow.addColorStop(0, "#1c2654"); meadow.addColorStop(1, "#141c44");
+    var fr = rng(41);
+    [["#18204b", 0.6, 0.05, 0.10, 0.30], ["#121940", 0.68, 0.065, 0.06, 0.38]].forEach(function (L) {
+      g.fillStyle = L[0];
+      for (var x = -S * 0.06; x < W + S * 0.1; x += S * L[2] * (0.7 + fr() * 0.6)) {
+        var edge = Math.min(1, Math.abs(x / W - 0.5) * 2.3);
+        var h = H * (L[3] + edge * edge * L[4]) * (0.8 + fr() * 0.4), base = H * L[1], wdt = S * L[2] * 0.9;
+        g.beginPath(); g.moveTo(x - wdt, base); g.lineTo(x, base - h); g.lineTo(x + wdt, base); g.fill();
+      }
+      g.fillRect(0, H * L[1] - 1, W, 2);
     });
+    g.fillStyle = meadow; g.fillRect(0, H * 0.68, W, H * 0.32);
+    // big broad trees at both edges; the oak (right) and beech (left) carry the nests
+    function bigTree(tx, side, nest, col) {
+      var tc = H * 0.3, tr = S * 0.2;
+      g.fillStyle = col; g.strokeStyle = col; g.lineCap = "round";
+      g.beginPath(); g.moveTo(tx - S * 0.04, H); g.lineTo(tx - S * 0.022, tc); g.lineTo(tx + S * 0.03, tc); g.lineTo(tx + S * 0.05, H); g.fill();
+      g.lineWidth = S * 0.018;
+      g.beginPath(); g.moveTo(tx, H * 0.45); g.quadraticCurveTo(tx - side * S * 0.08, H * 0.41, nest.x * W + side * S * 0.01, nest.y * H - S * 0.07); g.stroke();
+      [[0, 0, 1], [-0.7, 0.25, 0.75], [0.3, -0.45, 0.8], [-0.45, -0.35, 0.7], [0.6, 0.3, 0.7]].forEach(function (c) {
+        g.beginPath(); g.arc(tx - side * c[0] * tr, tc + c[1] * tr, tr * c[2], 0, 7); g.fill();
+      });
+    }
+    g.fillStyle = "#0f1536";
+    [[0.22, 0.24], [0.8, 0.26], [0.3, 0.18], [0.7, 0.2]].forEach(function (t) { // second row, smaller
+      var x = t[0] * W, top = H * (0.66 - t[1]), rr2 = S * 0.07;
+      g.fillRect(x - S * 0.008, top, S * 0.016, H * 0.7 - top);
+      g.beginPath(); g.arc(x, top, rr2, 0, 7); g.arc(x - rr2 * 0.7, top + rr2 * 0.5, rr2 * 0.8, 0, 7); g.arc(x + rr2 * 0.7, top + rr2 * 0.5, rr2 * 0.8, 0, 7); g.fill();
+    });
+    bigTree(W * 0.95, 1, NESTS[0], "#0b1029");
+    bigTree(W * 0.05, -1, NESTS[1], "#0b1029");
     [["#121a3d", 0.13, 11], ["#0b1029", 0.08, 23]].forEach(function (L) {
       var rr = rng(L[2]); g.fillStyle = L[0]; g.beginPath(); g.moveTo(0, H);
       var base = H - H * L[1];
@@ -263,19 +287,21 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   function topY() { return Math.max((inset("Top") + 84) / H, 0.14); }
   function botY() { return Math.min(1 - (inset("Bottom") + 96) / H, 0.86); }
 
-  function nestDist(x, y) { var dx = (x - NEST.x) * W, dy = (y - NEST.y) * H; return Math.sqrt(dx * dx + dy * dy); }
+  function distTo(nest, x, y) { var dx = (x - nest.x) * W, dy = (y - nest.y) * H; return Math.sqrt(dx * dx + dy * dy); }
+  function nearNest(x, y) { for (var k = 0; k < P.nests; k++) if (distTo(NESTS[k], x, y) < S * 0.25) return true; return false; }
   function spawn(kind) {
     var t = topY(), x, y, tries = 0;
     do { x = 0.08 + Math.random() * 0.84; y = t + Math.random() * (botY() - t); }
-    while (P.nest && kind !== "wasp" && nestDist(x, y) < S * 0.25 && ++tries < 8);
-    if (kind === "wasp" && P.nest) { x = NEST.x + (Math.random() - 0.5) * 0.03; y = NEST.y + 0.03; }
+    while (kind !== "wasp" && nearNest(x, y) && ++tries < 8);
+    var home = P.nests ? Math.floor(Math.random() * P.nests) : -1;
+    if (kind === "wasp" && home >= 0) { x = NESTS[home].x + (Math.random() - 0.5) * 0.03; y = NESTS[home].y + 0.03; }
     var b = {
-      kind: kind, x: x, y: y,
+      kind: kind, x: x, y: y, home: home,
       a: Math.random() * Math.PI * 2, age: 0, phase: Math.random() * 6,
       blink: 1.1 + Math.random() * 0.7, blinkOff: Math.random() * 2
     };
     // nest wasps (nights 2-3) linger around the oak so a small swarm builds up there
-    if (kind === "wasp") { b.life = P.nest && !P.hunt ? 9 : P.life * 2.2; b.sp = P.speed * 1.1 * (0.85 + Math.random() * 0.3); }
+    if (kind === "wasp") { b.life = P.nests ? 9 : P.life * 2.2; b.sp = P.speed * 1.1 * (0.85 + Math.random() * 0.3); }
     else if (kind === "gold") { b.life = Math.max(0.9, 1.9 / P.m); b.sp = P.speed * 1.7; }
     else { b.life = P.life; b.sp = P.speed * (0.8 + Math.random() * 0.4); }
     bugs.push(b);
@@ -307,8 +333,8 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       if (d < reach && d < bestD) { hit = i; bestD = d; }
     }
     if (hit === null) {
-      clock = Math.max(0, clock - MISS); stats.misses++;
-      float(px, py, "−" + MISS.toFixed(1) + "s", "#ff9a7a");
+      clock = Math.max(0, clock - P.miss); stats.misses++;
+      float(px, py, "−" + P.miss.toFixed(1) + "s", "#ff9a7a");
       beep(180, 0.06, "triangle", 0.06);
       setClock();
       return;
@@ -321,8 +347,8 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     } else {
       var gain = bug.kind === "gold" ? 3 : 1;
       caught = Math.min(GOAL, caught + gain);
-      clock = Math.min(CLOCK, clock + (gain === 3 ? GOLD_GAIN : GAIN));
-      if (gain === 3) { stats.golds++; float(px, py, "+3  +" + GOLD_GAIN.toFixed(1) + "s", "#ffd23d"); beep(880, 0.14, "sine", 0.12); }
+      clock = Math.min(CLOCK, clock + GAIN);
+      if (gain === 3) { stats.golds++; float(px, py, "+3", "#ffd23d"); beep(880, 0.14, "sine", 0.12); }
       else { float(px, py, "+" + GAIN.toFixed(1) + "s", "#fff4b0"); beep(520 + caught * 22, 0.09, "sine", 0.12); }
       burst(bug.x * W, bug.y * H, gain === 3 ? "#ffd23d" : "#fff4b0", gain === 3 ? 26 : 14);
       if (caught >= GOAL) return endNight(true);
@@ -375,8 +401,8 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     // gusts: 0.8 s warning, then 1 s of wind
     gustT += dt;
     if (P.gust && gustWarn <= 0 && gustOn <= 0 && gustT >= P.gustEvery) {
-      // the storm mostly blows toward the oak, carrying fireflies to the nest
-      gustT = 0; gustWarn = 0.8; gustDir = Math.random() < 0.75 ? 1 : -1; beep(70, 0.5, "sawtooth", 0.03);
+      // the storm blows toward the nests (mostly the oak while it's the only one)
+      gustT = 0; gustWarn = 0.8; gustDir = P.nests === 1 ? (Math.random() < 0.75 ? 1 : -1) : (Math.random() < 0.5 ? 1 : -1); beep(70, 0.5, "sawtooth", 0.03);
     }
     if (gustWarn > 0) { gustWarn -= dt; if (gustWarn <= 0) gustOn = 1; }
     var wind = 0;
@@ -399,9 +425,9 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
           // night 4+: chase the nearest lit firefly
           var want = Math.atan2((tgt.y - b.y) * H, (tgt.x - b.x) * W);
           b.a += Math.max(-1, Math.min(1, angDiff(b.a, want))) * P.hunt * dt;
-        } else if (P.nest && nestDist(b.x, b.y) > S * 0.2) {
-          // nights 2-3: wasps hang around the nest; the wind brings the fireflies to them
-          var home = Math.atan2((NEST.y - b.y) * H, (NEST.x - b.x) * W);
+        } else if (b.home >= 0 && distTo(NESTS[b.home], b.x, b.y) > S * 0.2) {
+          // between hunts, wasps hang around their nest; the wind brings fireflies to them
+          var nh = NESTS[b.home], home = Math.atan2((nh.y - b.y) * H, (nh.x - b.x) * W);
           b.a += Math.max(-1, Math.min(1, angDiff(b.a, home))) * 2.2 * dt;
         }
         b.a += (Math.random() - 0.5) * 2.5 * dt;
@@ -437,7 +463,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     cx.setTransform(DPR, 0, 0, DPR, sx * DPR, sy * DPR);
     if (bg) cx.drawImage(bg, 0, 0, W, H);
     var r = S * 0.022;
-    if (P.nest && (state === "play" || state === "intro" || state === "end" || state === "paused")) drawNest(t);
+    if (state !== "title") for (var nk = 0; nk < P.nests; nk++) drawNest(NESTS[nk], t + nk * 1.7);
     if (state === "play" && (gustWarn > 0 || gustOn > 0)) drawGust(t);
     var list = state === "play" ? bugs : ambient(t);
     for (var i = 0; i < list.length; i++) {
@@ -467,8 +493,8 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     cx.restore();
   }
 
-  function drawNest(t) {
-    var x = NEST.x * W, y = NEST.y * H, R = S * 0.05, sway = Math.sin(t * 1.3) * 0.05;
+  function drawNest(nest, t) {
+    var x = nest.x * W, y = nest.y * H, R = S * 0.05, sway = Math.sin(t * 1.3) * 0.05;
     cx.save(); cx.translate(x, y - R * 1.2); cx.rotate(sway); cx.translate(0, R * 1.2);
     cx.strokeStyle = "#0d1330"; cx.lineWidth = 2; cx.beginPath(); cx.moveTo(0, -R * 1.4); cx.lineTo(0, -R * 0.9); cx.stroke();
     var g = cx.createLinearGradient(0, -R, 0, R);
@@ -637,24 +663,25 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     el.classList.toggle("low", s <= 5);
   }
 
-  // The story of the five nights; each one brings in one new idea.
+  // The story of the five nights. Each night's new danger is in **bold** in its text.
   var STORY = [
-    { name: "The First Warm Night", isNew: "A few wasps. Now and then one blunders into a firefly and eats it.",
-      text: "Every summer the old lantern on Wren Hill goes dark, and every summer someone has to fill it again. Five nights until the solstice festival. Tonight is gentle: the fireflies drift slow and low, and only a few wasps wander the meadow. Once in a while one blunders into a firefly, and that's the end of that firefly. Twenty for the jar before the moon sets.",
-      won: "Walking home, you notice something grey and papery hanging in the old oak at the edge of the meadow." },
-    { name: "The Nest in the Oak", isNew: "Wasps pour out of the nest, and gusts blow toward it.",
-      text: "That grey thing in the oak is a wasps' nest, and tonight it's awake. A storm is coming off the ridge, and nearly every gust rolls toward the oak, sweeping fireflies straight into the wasps hanging around their nest. Catch them before the wind delivers them.",
+    { name: "The First Warm Night",
+      text: "Every summer the old lantern on Wren Hill goes dark, and every summer someone has to fill it again. Five nights until the solstice festival. Tonight is gentle: the fireflies drift slow and low over the clearing, and only a few wasps wander in from the trees. Once in a while one **blunders into a firefly and eats it**. Twenty for the jar before the moon sets.",
+      won: "Walking home, you notice something grey and papery hanging in the old oak at the edge of the clearing." },
+    { name: "The Nest in the Oak",
+      text: "That grey thing in the oak is a **wasps' nest**, and tonight it's awake. A storm is coming off the ridge, and **nearly every gust rolls toward the oak**, sweeping fireflies straight into the wasps hanging around their nest. Catch them before the wind delivers them.",
       won: "Near the end of the night you saw something new: fireflies by the oak went dark whenever a wasp drifted close." },
-    { name: "The Dark Between", isNew: "Fireflies blink dark to hide. Dark ones can't be eaten, or caught.",
-      text: "The fireflies have learned to hide. They flash, then go dark, and a wasp can't eat what it can't see. Neither can you: a dark firefly slips right through your fingers, and grabbing at nothing costs you time. Wait for the light, then grab.",
-      won: "The wasps went hungry tonight. Grandma says hungry wasps stop waiting for luck." },
-    { name: "The Hunt", isNew: "Wasps chase the nearest lit firefly.",
-      text: "The wasps aren't drifting anymore. They pick out a lit firefly and chase it down, and the fireflies only escape if they go dark in time. Get to each one before the wasps do, and keep your fingers clear of the stingers.",
+    { name: "The Dark Between",
+      text: "The fireflies have learned to hide. They **flash, then go dark**, and a wasp can't eat what it can't see. Neither can you: **a dark firefly slips right through your fingers**, and grabbing at nothing costs you time. Wait for the light, then grab.",
+      won: "The wasps went hungry tonight. Grandma says hungry wasps stop waiting for luck, and she heard buzzing in the old beech too." },
+    { name: "The Hunt",
+      text: "The wasps aren't drifting anymore. They **pick out a lit firefly and chase it down**, and a firefly only escapes if it goes dark in time. Across the clearing, **a second nest has woken in the old beech**, so now the wind blows trouble from both sides.",
       won: "One night left. Down in the village they're already hanging paper streamers." },
-    { name: "Solstice Eve", isNew: "Everything at once.",
-      text: "The last night before the festival, and it all comes together: the storm, the nest, the hiding, the hunting, and the fastest fireflies of the summer. Twenty lights, or Wren Hill stays dark this year.",
+    { name: "Solstice Eve",
+      text: "The last night before the festival, and **it all comes together**: the storm, both nests, the hiding, the hunting, and the fastest fireflies of the summer. Twenty lights, or Wren Hill stays dark this year.",
       won: "The lantern on Wren Hill burns gold for the festival." }
   ];
+  function storyHtml(t) { return esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
 
   function intro(n) {
     var p = params(n), st = STORY[n - 1];
@@ -662,12 +689,10 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     $("introEyebrow").textContent = "Night " + n + " of " + NIGHTS + " · ×" + p.m.toFixed(2);
     $("introTitle").textContent = st.name;
     var notes = ["glow " + p.life.toFixed(1) + "s", "wasps " + Math.round(p.wasp * 100) + "%"];
-    if (p.gust) notes.push("gusts every " + p.gustEvery + "s");
+    if (p.gust) notes.push("gusts every " + p.gustEvery.toFixed(1) + "s");
     if (p.dark) notes.push("dark " + Math.round(p.dark * 100) + "% of each blink");
-    if (p.hunt) notes.push("wasps hunt");
-    notes.push("miss −" + MISS.toFixed(1) + "s", "catch +" + GAIN.toFixed(1) + "s");
-    $("introText").innerHTML = esc(st.text) +
-      '<span class="new"><b>New tonight:</b> ' + esc(st.isNew) + "</span>" +
+    notes.push("miss −" + p.miss.toFixed(1) + "s", "catch +" + GAIN.toFixed(1) + "s");
+    $("introText").innerHTML = storyHtml(st.text) +
       '<span class="notes">' + notes.map(function (x) { return "<span>" + x + "</span>"; }).join(" · ") + "</span>";
     ladder("ladderIntro", n, true);
     renderHistory("histIntro", n, false);
