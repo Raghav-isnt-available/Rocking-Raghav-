@@ -50,7 +50,7 @@ canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; t
 .bar span { display: block; height: 100%; width: 0; background: var(--glow); box-shadow: 0 0 10px var(--glow); }
 
 .overlay {
-  position: fixed; inset: 0; z-index: 3; display: grid; place-items: center;
+  position: fixed; inset: 0; z-index: 3; display: grid; place-items: center; overflow-y: auto; overscroll-behavior: contain;
   background: radial-gradient(ellipse at 50% 40%, rgba(26, 33, 82, .55), rgba(10, 15, 36, .9));
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px);
@@ -144,9 +144,9 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     <div class="eyebrow" id="introEyebrow">Night 2 of 5</div>
     <h2 id="introTitle">Difficulty ×1.20</h2>
     <p id="introText"></p>
-    <div class="hist" id="histIntro"></div>
     <div class="ladder" id="ladderIntro"></div>
     <div class="btns"><button class="go" id="btnGo" type="button">Go</button></div>
+    <div class="hist" id="histIntro"></div>
   </div>
 </div>
 
@@ -156,12 +156,12 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     <h2 id="endTitle"></h2>
     <p id="endText"></p>
     <div class="stats" id="endStats"></div>
-    <div class="hist" id="histEnd"></div>
     <div class="ladder" id="ladderEnd"></div>
     <div class="btns">
       <button class="go" id="btnEnd" type="button">Next</button>
       <button class="ghost" id="btnMenu" type="button">Back to start</button>
     </div>
+    <div class="hist" id="histEnd"></div>
   </div>
 </div>
 
