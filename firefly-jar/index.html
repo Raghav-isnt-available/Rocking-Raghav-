@@ -178,15 +178,18 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   var NIGHTS = 5, STEP = 1.2;
   var GOAL = 20, CLOCK = 30, LIVES = 3, SPAWN_EVERY = 0.62, GOLD_EVERY = 7;
   var GAIN = 0.2;                                       // seconds back per catch
-  var BASE = { speed: 0.19, life: 2.8, wasp: 0.12, miss: 0.6, gust: 0.4, gustEvery: 7, dark: 0.22, hunt: 1.6 };
+  var BASE = { speed: 0.19, life: 2.8, wasp: 0.12, miss: 0.6, gust: 0.4, dark: 0.22, hunt: 1.6 };
   var NESTS = [{ x: 0.85, y: 0.44 }, { x: 0.15, y: 0.47 }]; // oak (right), beech (left)
+  // seconds between gusts, picked at random inside each night's window; the storm
+  // builds from its first night (2) to Solstice Eve's 3-4 s
+  var GUST_WINDOW = { 2: [5.5, 7], 3: [4.5, 6], 4: [3.8, 5], 5: [3, 4] };
   function mult(n) { return Math.pow(STEP, n - 1); }
   function params(n) {
     var m = mult(n);
     return {
       m: m, speed: BASE.speed * m, life: BASE.life / m, wasp: Math.min(0.5, BASE.wasp * m), miss: BASE.miss * m,
       nests: n >= 4 ? 2 : n >= 2 ? 1 : 0,
-      gust: n >= 2 ? BASE.gust * m : 0, gustEvery: BASE.gustEvery / m,
+      gust: n >= 2 ? BASE.gust * m : 0, gustWin: GUST_WINDOW[n] || null,
       dark: n >= 3 ? Math.min(0.6, BASE.dark * m) : 0,
       hunt: n >= 4 ? BASE.hunt * m : 0
     };
@@ -274,7 +277,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   // ---- State -------------------------------------------------------------
   var state = "title", night = 1, P = params(1);
   var bugs = [], sparks = [], texts = [], caught = 0, lives = LIVES, clock = CLOCK;
-  var spawnT = 0, goldT = 0, gustT = 0, gustDir = 1, gustOn = 0, gustWarn = 0, totalTime = 0;
+  var spawnT = 0, goldT = 0, gustT = 0, gustNext = 6, gustDir = 1, gustOn = 0, gustWarn = 0, totalTime = 0;
   var shake = 0, flash = 0, last = 0, cleared = 0, sound = true, ac = null;
   var stats = { misses: 0, eaten: 0, golds: 0 };
   var best = null;
@@ -311,10 +314,11 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     return ((b.age + b.blinkOff) % b.blink) / b.blink < P.dark;
   }
 
+  function nextGust() { var w = P.gustWin || [6, 6]; return w[0] + Math.random() * (w[1] - w[0]); }
   function startNight(n) {
     night = n; P = params(n);
     bugs = []; sparks = []; texts = []; caught = 0; lives = LIVES; clock = CLOCK;
-    spawnT = 0; goldT = 0; gustT = 0; gustOn = 0; gustWarn = 0; shake = 0; flash = 0;
+    spawnT = 0; goldT = 0; gustT = 0; gustNext = nextGust(); gustOn = 0; gustWarn = 0; shake = 0; flash = 0;
     stats = { misses: 0, eaten: 0, golds: 0 };
     for (var i = 0; i < 3; i++) spawn("fly");
     state = "play"; show(null); setHud();
@@ -400,7 +404,8 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 
     // gusts: 0.8 s warning, then 1 s of wind
     gustT += dt;
-    if (P.gust && gustWarn <= 0 && gustOn <= 0 && gustT >= P.gustEvery) {
+    if (P.gust && gustWarn <= 0 && gustOn <= 0 && gustT >= gustNext) {
+      gustNext = nextGust();
       // the storm blows toward the nests (mostly the oak while it's the only one)
       gustT = 0; gustWarn = 0.8; gustDir = P.nests === 1 ? (Math.random() < 0.75 ? 1 : -1) : (Math.random() < 0.5 ? 1 : -1); beep(70, 0.5, "sawtooth", 0.03);
     }
@@ -689,7 +694,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     $("introEyebrow").textContent = "Night " + n + " of " + NIGHTS + " · ×" + p.m.toFixed(2);
     $("introTitle").textContent = st.name;
     var notes = ["glow " + p.life.toFixed(1) + "s", "wasps " + Math.round(p.wasp * 100) + "%"];
-    if (p.gust) notes.push("gusts every " + p.gustEvery.toFixed(1) + "s");
+    if (p.gust) notes.push("gusts every " + p.gustWin[0] + "–" + p.gustWin[1] + "s");
     if (p.dark) notes.push("dark " + Math.round(p.dark * 100) + "% of each blink");
     notes.push("miss −" + p.miss.toFixed(1) + "s", "catch +" + GAIN.toFixed(1) + "s");
     $("introText").innerHTML = storyHtml(st.text) +
@@ -780,7 +785,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   });
 
   // read-only peek used by automated play-tests; harmless for players
-  window.__fireflyPeek = function () { return { state: state, caught: caught, lives: lives, clock: clock, W: W, H: H,
+  window.__fireflyPeek = function () { return { state: state, gustWarn: gustWarn, caught: caught, lives: lives, clock: clock, W: W, H: H,
     bugs: bugs.map(function (b) { return { kind: b.kind, x: b.x, y: b.y, dark: isDark(b), age: b.age }; }) }; };
 
   window.addEventListener("resize", resize);
