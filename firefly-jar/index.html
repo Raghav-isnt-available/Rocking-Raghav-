@@ -66,6 +66,19 @@ h2 { font: 800 clamp(32px, 9vw, 48px)/1 var(--display); margin: 0; text-wrap: ba
 .ladder div b { display: block; font-size: 17px; color: var(--ink); }
 .ladder div.on { border-color: var(--glow); color: var(--glow-soft); box-shadow: inset 0 0 0 1px var(--glow); }
 .ladder div.done b { color: var(--glow); }
+.ladder button { font: 700 12px/1.2 var(--display); color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 10px; padding: 8px 2px 6px; cursor: pointer; min-height: 48px; }
+.ladder button b { display: block; font-size: 17px; color: var(--ink); }
+.ladder button.done b { color: var(--glow); }
+.ladder button.next { border-color: var(--glow); box-shadow: inset 0 0 0 1px var(--glow); color: var(--glow-soft); }
+.ladder-note { font-size: 12.5px; color: var(--muted); margin-top: -6px; }
+.hist { display: grid; gap: 4px; font-size: 13.5px; font-variant-numeric: tabular-nums; text-align: left; }
+.hist-head { font: 700 12px/1 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); text-align: center; margin-bottom: 4px; }
+.hist-row { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: baseline; padding: 6px 10px; border-radius: 8px; background: rgba(166, 173, 214, 0.08); }
+.hist-row .ok { color: var(--glow); font-weight: 700; }
+.hist-row .no { color: var(--wasp); font-weight: 700; }
+.hist-row .when { color: var(--muted); font-size: 12px; }
+.hist-row.latest { box-shadow: inset 0 0 0 1px var(--line); }
+.hist-empty { color: var(--muted); font-size: 13px; text-align: center; }
 .legend { display: flex; justify-content: center; gap: 18px; color: var(--muted); font-size: 14px; flex-wrap: wrap; }
 .legend span { display: inline-flex; align-items: center; gap: 7px; }
 .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
@@ -113,6 +126,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       <span><i class="dot gust">»</i>Gusts shove everything sideways. Watch for the warning.</span>
     </div>
     <div class="ladder" id="ladderTitle"></div>
+    <div class="ladder-note">Tap any night to jump straight to it.</div>
     <div class="btns">
       <button class="go" id="btnStart" type="button">Start night 1</button>
       <button class="ghost" id="btnSound" type="button">Sound: on</button>
@@ -125,8 +139,9 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     <div class="eyebrow" id="introEyebrow">Night 2 of 5</div>
     <h2 id="introTitle">Difficulty ×1.20</h2>
     <p id="introText"></p>
+    <div class="hist" id="histIntro"></div>
     <div class="ladder" id="ladderIntro"></div>
-    <div class="btns"><button class="go" id="btnGo" type="button">Go</button></div>
+    <div class="btns"><button class="go" id="btnGo" type="button">Go</button><button class="ghost" id="btnPick" type="button">Pick another night</button></div>
   </div>
 </div>
 
@@ -136,6 +151,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     <h2 id="endTitle"></h2>
     <p id="endText"></p>
     <div class="stats" id="endStats"></div>
+    <div class="hist" id="histEnd"></div>
     <div class="ladder" id="ladderEnd"></div>
     <div class="btns">
       <button class="go" id="btnEnd" type="button">Next</button>
@@ -499,14 +515,66 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     var playing = id === null;
     $("hud").hidden = !playing; $("bar").hidden = !playing;
   }
-  function ladder(el, current) {
+  function nextNight() { return Math.min(NIGHTS, cleared + 1); }
+  function ladder(el, current, pickable) {
     var html = "";
     for (var n = 1; n <= NIGHTS; n++) {
-      var cls = n === current ? "on" : n <= cleared ? "done" : "";
-      html += '<div class="' + cls + '"><b>' + n + "</b>×" + mult(n).toFixed(2) + "</div>";
+      if (pickable) {
+        var c = n <= cleared ? "done" : n === nextNight() ? "next" : "";
+        html += '<button type="button" class="' + c + '" data-night="' + n + '" aria-label="Play night ' + n +
+          (n <= cleared ? ", cleared" : "") + '"><b>' + n + "</b>×" + mult(n).toFixed(2) + "</button>";
+      } else {
+        var cls = n === current ? "on" : n <= cleared ? "done" : "";
+        html += '<div class="' + cls + '"><b>' + n + "</b>×" + mult(n).toFixed(2) + "</div>";
+      }
     }
     $(el).innerHTML = html;
   }
+
+  // ---- Attempt history (last 5 per night, kept on this device) -----------
+  var HIST_KEY = "fireflyJarHistory2", history = {};
+  try { history = JSON.parse(localStorage.getItem(HIST_KEY) || "{}") || {}; } catch (e) { history = {}; }
+  function record(n, won, why) {
+    var list = history[n] || [];
+    list.unshift({ won: won, why: why || "", caught: caught, used: Math.round((CLOCK - clock) * 10) / 10, at: Date.now() });
+    history[n] = list.slice(0, 5);
+    try { localStorage.setItem(HIST_KEY, JSON.stringify(history)); } catch (e) {}
+  }
+  function ago(ms) {
+    var s = (Date.now() - ms) / 1000;
+    if (s < 60) return "just now";
+    if (s < 3600) return Math.floor(s / 60) + "m ago";
+    if (s < 86400) return Math.floor(s / 3600) + "h ago";
+    return Math.floor(s / 86400) + "d ago";
+  }
+  function renderHistory(el, n, freshTop) {
+    var list = history[n] || [];
+    if (!list.length) { $(el).innerHTML = '<div class="hist-empty">No attempts at night ' + n + " yet.</div>"; return; }
+    var bestWin = null;
+    list.forEach(function (a) { if (a.won && (bestWin === null || a.used < bestWin)) bestWin = a.used; });
+    var rows = list.map(function (a, i) {
+      var what = a.won ? "Cleared in <b>" + a.used.toFixed(1) + "s</b>" + (a.used === bestWin ? " · best" : "")
+                       : a.caught + " / " + GOAL + " · " + (a.why === "stung" ? "stung out" : "time ran out");
+      return '<div class="hist-row' + (freshTop && i === 0 ? " latest" : "") + '"><span class="' + (a.won ? "ok" : "no") + '">' +
+        (a.won ? "✓" : "✗") + "</span><span>" + what + '</span><span class="when">' + ago(a.at) + "</span></div>";
+    }).join("");
+    $(el).innerHTML = '<div class="hist-head">Last ' + list.length + " at night " + n + "</div>" + rows;
+  }
+
+  var runFull = false; // true only for a run started at night 1, so the 5-night total is fair
+  function titleScreen() {
+    state = "title";
+    ladder("ladderTitle", 0, true);
+    var nn = nextNight();
+    $("btnStart").textContent = cleared === 0 ? "Start night 1" : cleared >= NIGHTS ? "Play from night 1" : "Continue: night " + nn;
+    show("screenTitle");
+  }
+  $("ladderTitle").addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("button[data-night]");
+    if (!b) return;
+    var n = Number(b.getAttribute("data-night"));
+    ensureAudio(); runFull = n === 1; totalTime = 0; intro(n);
+  });
   function setHud() {
     $("hudLevel").textContent = "Night " + night + "/" + NIGHTS;
     $("hudCaught").textContent = caught + " / " + GOAL;
@@ -532,18 +600,22 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       "<b>" + Math.round(p.wasp * 100) + "%</b> of bugs are wasps. A missed tap costs <b>" + p.miss.toFixed(1) + "s</b>. " +
       "Gusts every <b>" + p.gustEvery.toFixed(1) + "s</b>.";
     ladder("ladderIntro", n);
+    renderHistory("histIntro", n, false);
+    $("btnPick").hidden = false;
     show("screenIntro");
     setTimeout(function () { $("btnGo").focus(); }, 0);
   }
 
   function endNight(won, why) {
     state = "end";
+    texts = []; sparks = []; // the meadow freezes behind the card; don't leave labels hanging
+    record(night, won, why);
     show("screenEnd");
     if (won) {
       cleared = Math.max(cleared, night);
       try { localStorage.setItem("fireflyJarCleared2", String(cleared)); } catch (e) {}
     }
-    var final = won && night === NIGHTS;
+    var final = won && night === NIGHTS && runFull;
     var line = "<div><b>" + stats.misses + "</b>missed taps</div><div><b>" + stats.eaten + "</b>eaten by wasps</div><div><b>" + stats.golds + "</b>golden</div>";
     if (final) {
       var t = Math.round(totalTime);
@@ -554,8 +626,15 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       $("endText").textContent = (isBest ? "New best: " : "Total: ") + t + "s across all five nights (best " + best + "s).";
       $("endStats").innerHTML = line;
       $("btnEnd").textContent = "Play again";
-      $("btnEnd").onclick = function () { totalTime = 0; intro(1); };
+      $("btnEnd").onclick = function () { totalTime = 0; runFull = true; intro(1); };
       beep(660, 0.12, "sine", 0.12); setTimeout(function () { beep(880, 0.2, "sine", 0.12); }, 130);
+    } else if (won && night === NIGHTS) {
+      $("endEyebrow").textContent = "Night 5 cleared";
+      $("endTitle").textContent = "Jar full";
+      $("endText").textContent = "Start from night 1 and clear all five in one go to set a best total time.";
+      $("endStats").innerHTML = line;
+      $("btnEnd").textContent = "Play from night 1";
+      $("btnEnd").onclick = function () { totalTime = 0; runFull = true; intro(1); };
     } else if (won) {
       $("endEyebrow").textContent = "Night " + night + " cleared · " + Math.ceil(clock) + "s to spare";
       $("endTitle").textContent = caught + " caught";
@@ -574,13 +653,18 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       $("btnEnd").onclick = function () { intro(night); };
     }
     ladder("ladderEnd", final ? 0 : night);
+    renderHistory("histEnd", night, true);
     setTimeout(function () { $("btnEnd").focus(); }, 0);
   }
 
   function goHandler() { ensureAudio(); if (ac && ac.resume) ac.resume(); startNight(night); }
-  $("btnStart").onclick = function () { ensureAudio(); totalTime = 0; intro(1); };
+  $("btnStart").onclick = function () {
+    ensureAudio(); var n = cleared >= NIGHTS ? 1 : nextNight();
+    runFull = n === 1; totalTime = 0; intro(n);
+  };
+  $("btnPick").onclick = titleScreen;
   $("btnGo").onclick = goHandler;
-  $("btnMenu").onclick = function () { state = "title"; ladder("ladderTitle", 0); show("screenTitle"); };
+  $("btnMenu").onclick = titleScreen;
   $("btnSound").onclick = function () {
     sound = !sound; $("btnSound").textContent = "Sound: " + (sound ? "on" : "off");
     try { localStorage.setItem("fireflyJarSound", sound ? "1" : "0"); } catch (e) {}
@@ -592,6 +676,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     if (document.hidden && state === "play") {
       state = "paused";
       $("introEyebrow").textContent = "Paused · Night " + night;
+      $("btnPick").hidden = true;
       $("introTitle").textContent = caught + " / " + GOAL;
       $("introText").innerHTML = "<b>" + Math.ceil(clock) + "s</b> left. Tap to keep going.";
       ladder("ladderIntro", night);
@@ -602,7 +687,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 
   window.addEventListener("resize", resize);
   resize();
-  ladder("ladderTitle", 0);
+  titleScreen();
   requestAnimationFrame(frame);
 })();
 </script>
