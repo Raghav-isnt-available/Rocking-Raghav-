@@ -71,6 +71,7 @@ h2 { font: 800 clamp(32px, 9vw, 48px)/1 var(--display); margin: 0; text-wrap: ba
 .ladder button { font: 700 12px/1.2 var(--display); color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 10px; padding: 8px 2px 6px; cursor: pointer; min-height: 48px; }
 .ladder button b { display: block; font-size: 17px; color: var(--ink); }
 .ladder button.done b { color: var(--glow); }
+.ladder button.on { border-color: var(--glow); box-shadow: inset 0 0 0 1px var(--glow); color: var(--glow-soft); background: rgba(255, 225, 92, 0.08); }
 .ladder button.next { border-color: var(--glow); box-shadow: inset 0 0 0 1px var(--glow); color: var(--glow-soft); }
 .ladder-note { font-size: 12.5px; color: var(--muted); margin-top: -6px; }
 .hist { display: grid; gap: 4px; font-size: 13.5px; font-variant-numeric: tabular-nums; text-align: left; }
@@ -143,7 +144,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     <p id="introText"></p>
     <div class="hist" id="histIntro"></div>
     <div class="ladder" id="ladderIntro"></div>
-    <div class="btns"><button class="go" id="btnGo" type="button">Go</button><button class="ghost" id="btnPick" type="button">Pick another night</button></div>
+    <div class="btns"><button class="go" id="btnGo" type="button">Go</button></div>
   </div>
 </div>
 
@@ -522,7 +523,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     var html = "";
     for (var n = 1; n <= NIGHTS; n++) {
       if (pickable) {
-        var c = n <= cleared ? "done" : n === nextNight() ? "next" : "";
+        var c = (n === current ? "on " : "") + (n <= cleared ? "done" : n === nextNight() && !current ? "next" : "");
         html += '<button type="button" class="' + c + '" data-night="' + n + '" aria-label="Play night ' + n +
           (n <= cleared ? ", cleared" : "") + '"><b>' + n + "</b>×" + mult(n).toFixed(2) + "</button>";
       } else {
@@ -571,11 +572,16 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     $("btnStart").textContent = cleared === 0 ? "Start night 1" : cleared >= NIGHTS ? "Play from night 1" : "Continue: night " + nn;
     show("screenTitle");
   }
-  $("ladderTitle").addEventListener("click", function (e) {
-    var b = e.target.closest && e.target.closest("button[data-night]");
-    if (!b) return;
-    var n = Number(b.getAttribute("data-night"));
-    ensureAudio(); runFull = n === 1; totalTime = 0; intro(n);
+  // Night tiles switch nights directly, from the start, intro and end screens alike.
+  ["ladderTitle", "ladderIntro", "ladderEnd"].forEach(function (id) {
+    $(id).addEventListener("click", function (e) {
+      var b = e.target.closest && e.target.closest("button[data-night]");
+      if (!b || state === "paused") return;
+      var n = Number(b.getAttribute("data-night"));
+      ensureAudio();
+      if (!(state === "intro" && n === night)) { runFull = n === 1; totalTime = 0; }
+      intro(n);
+    });
   });
   function setHud() {
     $("hudLevel").textContent = "Night " + night + "/" + NIGHTS;
@@ -620,9 +626,8 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       '<span class="notes">' + ["Tonight: glow " + p.life.toFixed(1) + "s", "dark " + Math.round(p.dark * 100) + "%",
         "wasps " + Math.round(p.wasp * 100) + "%", "miss −" + p.miss.toFixed(1) + "s", "gusts every " + p.gustEvery.toFixed(1) + "s"]
         .map(function (x) { return "<span>" + x + "</span>"; }).join(" · ") + "</span>";
-    ladder("ladderIntro", n);
+    ladder("ladderIntro", n, true);
     renderHistory("histIntro", n, false);
-    $("btnPick").hidden = false;
     show("screenIntro");
     setTimeout(function () { $("btnGo").focus(); }, 0);
   }
@@ -675,7 +680,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       $("btnEnd").textContent = "Try " + STORY[night - 1].name + " again";
       $("btnEnd").onclick = function () { intro(night); };
     }
-    ladder("ladderEnd", final ? 0 : night);
+    ladder("ladderEnd", final ? 0 : night, true);
     renderHistory("histEnd", night, true);
     setTimeout(function () { $("btnEnd").focus(); }, 0);
   }
@@ -685,7 +690,6 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     ensureAudio(); var n = cleared >= NIGHTS ? 1 : nextNight();
     runFull = n === 1; totalTime = 0; intro(n);
   };
-  $("btnPick").onclick = titleScreen;
   $("btnGo").onclick = goHandler;
   $("btnMenu").onclick = titleScreen;
   $("btnSound").onclick = function () {
@@ -699,7 +703,6 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     if (document.hidden && state === "play") {
       state = "paused";
       $("introEyebrow").textContent = "Paused · Night " + night;
-      $("btnPick").hidden = true;
       $("introTitle").textContent = caught + " / " + GOAL;
       $("introText").innerHTML = "<b>" + Math.ceil(clock) + "s</b> left. Tap to keep going.";
       ladder("ladderIntro", night);
