@@ -15,11 +15,13 @@ head = """<!doctype html>
 <meta name="theme-color" content="#06070c">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.json">
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{background:#06070c;overflow:visible}body{background:#06070c;margin:0;overflow:visible;min-width:calc(100vw + var(--extra-w,0px))}[hidden]{display:none!important}
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html,body{background:#06070c;margin:0;width:100%;overflow:hidden}[hidden]{display:none!important}
 canvas{left:0!important;top:0!important;right:0!important;bottom:0!important;width:100vw!important;height:100lvh!important}
 .overlay{--sym:max(16px,env(safe-area-inset-left,0px),env(safe-area-inset-right,0px));padding-left:var(--sym)!important;padding-right:var(--sym)!important}
-.hud{padding-left:16px!important;padding-right:16px!important}
-.overlay,.hud,.scene-ui,.bar{right:calc(-1 * var(--extra-w,0px))!important}</style>
+.hud{padding-left:calc(16px + var(--strip,0px))!important;padding-right:16px!important}
+.overlay{padding-left:calc(var(--sym) + var(--strip,0px))!important}
+.scene-ui{padding-left:calc(max(16px,env(safe-area-inset-left,0px)) + var(--strip,0px))!important}
+body::after{content:"";position:fixed;top:0;bottom:0;right:0;width:calc(var(--strip,0px) * 0.8);z-index:1;pointer-events:none;background:linear-gradient(to right,rgba(6,7,12,0),#06070c)}</style>
 </head>
 <body>
 """
