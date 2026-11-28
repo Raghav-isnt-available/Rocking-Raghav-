@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Firefly Jar</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,6 +23,9 @@
   color-scheme: dark;
 }
 html, body { height: 100%; background: #06070c; }
+/* the screens, HUD and captions below all set a display, which would beat the browser's
+   own rule for [hidden]; without this, hidden screens stay on top of each other */
+[hidden] { display: none !important; }
 body {
   background: #06070c; color: var(--ink); font: 15px/1.45 var(--body);
   overflow: hidden; overscroll-behavior: none;
@@ -45,7 +49,9 @@ canvas { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; height: 
 .lives i { width: 10px; height: 10px; border-radius: 50%; background: var(--glow); box-shadow: 0 0 8px var(--glow); }
 .lives i.gone { background: transparent; box-shadow: none; border: 1.5px solid var(--muted); opacity: .5; }
 .time.low { color: var(--wasp); }
-.build { font: 500 11px/1 var(--body); color: var(--muted); opacity: .6; letter-spacing: .06em; }
+.build { font: 500 11px/1 var(--body); color: var(--muted); opacity: .6; letter-spacing: .06em; background: none; border: 0; padding: 6px 10px; cursor: pointer; }
+/* tap "Build" to show what the phone gave the page (sizes, safe areas, strip, errors) */
+.diag { font: 500 10px/1.35 var(--body); color: var(--muted); opacity: .6; max-width: 46ch; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 #insetProbe { position: fixed; left: 0; top: 0; width: 0; height: 0; visibility: hidden; pointer-events: none;
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
 /* Completion line along the very top of the game, clock centred just under it; night,
@@ -82,7 +88,7 @@ canvas { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; height: 
   position: fixed; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overscroll-behavior: contain;
   background:
     linear-gradient(to bottom, var(--chrome) 0, var(--chrome) var(--ins-t, 0px), rgba(6, 7, 12, 0) calc(var(--ins-t, 0px) + 64px)),
-    radial-gradient(ellipse at 50% 40%, rgba(24, 26, 38, .6), rgba(5, 6, 10, .93));
+    radial-gradient(ellipse at var(--ov-cx, 50%) 40%, rgba(24, 26, 38, .6), rgba(5, 6, 10, .93));
   padding-left: max(16px, var(--ins-l, env(safe-area-inset-left, 0px))); padding-right: max(16px, var(--ins-r, env(safe-area-inset-right, 0px)));
   padding-block: calc(var(--ins-t, env(safe-area-inset-top, 0px)) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px);
 }
@@ -129,6 +135,19 @@ h2 { font: 800 clamp(32px, 9vw, 48px)/1 var(--display); margin: 0; text-wrap: ba
 .rules .dot { flex: none; transform: translateY(1px); }
 .rules span:last-child { grid-column: 1 / -1; }
 @media (max-width: 380px) { .rules { grid-template-columns: 1fr; } }
+/* short screens (the cover screen held sideways, Safari with its toolbars): same layout,
+   just tighter, so the cards need less scrolling */
+@media (max-height: 560px) {
+  .card { gap: 9px; }
+  h1 { font-size: clamp(34px, 10vh, 56px); }
+  h2 { font-size: clamp(26px, 7vh, 40px); }
+  .card p { font-size: 13.5px; line-height: 1.38; }
+  .rules { font-size: 12.5px; gap: 4px 14px; line-height: 1.3; }
+  .ladder button { min-height: 40px; padding: 5px 2px 4px; }
+  button.go { padding: 12px 30px 10px; }
+  button.ghost { padding: 6px; }
+  .btns { gap: 4px; }
+}
 .btns { display: grid; gap: 10px; justify-items: center; }
 button.go {
   font: 800 20px/1 var(--display); color: var(--night); background: var(--glow); border: 0; border-radius: 999px;
@@ -181,7 +200,8 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       <button class="go" id="btnStart" type="button">Start night 1</button>
       <button class="ghost" id="btnSound" type="button">Sound: on</button>
       <button class="ghost" id="btnStory" type="button" hidden>Replay the story</button>
-      <span class="build" id="build">Build 25</span>
+      <button class="build" id="build" type="button" aria-label="Build 26. Show screen details">Build 26</button>
+      <span class="diag" id="diag" hidden></span>
     </div>
     </div>
   </div>
@@ -256,16 +276,91 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   // Positions are fractions of the screen and sizes fractions of the short side, so
   // unfolding from the 5.4" cover screen to the 7.6" inner one mid-night just stretches
   // the meadow; nothing jumps or resets.
+  //   VW x H  the canvas as the page shows it.
+  //   W       the width the meadow is composed for. Normally VW. In the GitHub Pages build,
+  //           when the phone keeps a strip of the screen for its clock and battery (the
+  //           iPhone Duo's side column in a home-screen app), W is the whole screen and the
+  //           part under the strip just isn't shown, so the picture stays centred on the
+  //           real screen.
+  //   OX      where the canvas's left edge sits in that picture (the strip's width when the
+  //           strip is on the left, otherwise 0). Taps add OX to get picture coordinates.
   var cv = document.getElementById("c"), cx = cv.getContext("2d");
-  var W = 0, H = 0, S = 0, DPR = 1, bg = null;
+  var W = 0, H = 0, S = 0, DPR = 1, bg = null, VW = 0, OX = 0;
+  var STRIP = 0, STRIP_SIDE = "right", BAND = 0, layoutKey = "", lastErr = "";
+  var PAGES = window.FJ_PAGES === true && window.self === window.top;
   function resize() {
     var rc = cv.getBoundingClientRect();
-    W = Math.round(rc.width) || window.innerWidth; H = Math.round(rc.height) || window.innerHeight; S = Math.min(W, H);
-    try { placeTop(); } catch (e) {}
+    VW = Math.round(rc.width) || window.innerWidth; H = Math.round(rc.height) || window.innerHeight;
+    try { measureStrip(); } catch (e) { STRIP = 0; BAND = 0; note(e); }
+    W = VW + STRIP; OX = STRIP_SIDE === "left" ? STRIP : 0; S = Math.min(W, H);
+    try { placeTop(); } catch (e) { note(e); }
     DPR = Math.min(window.devicePixelRatio || 1, 3);
-    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
-    cx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    cv.width = Math.round(VW * DPR); cv.height = Math.round(H * DPR);
+    baseTransform(0, 0);
     bg = paintBackground();
+    layoutKey = sizeKey();
+    showDiag();
+  }
+  function baseTransform(sx, sy) { cx.setTransform(DPR, 0, 0, DPR, (sx - OX) * DPR, sy * DPR); }
+  // Everything that decides the layout. Checked every frame (and after resize, rotate and
+  // fold events, which iOS can fire before it has the new size), so the meadow is redrawn
+  // whenever any of it changes instead of being stretched from the old size.
+  function sizeKey() {
+    var de = document.documentElement;
+    return cv.clientWidth + "x" + cv.clientHeight + "@" + (window.devicePixelRatio || 1) + "|" + de.clientWidth + "x" + de.clientHeight +
+      "|" + (screen.width || 0) + "x" + (screen.height || 0) + "|" + (window.screenX || 0);
+  }
+  function checkSize() { if (sizeKey() !== layoutKey) resize(); }
+  function settle() { [0, 120, 400, 1000].forEach(function (ms) { setTimeout(checkSize, ms); }); }
+  // The iPhone Duo's panels in pixels (inner 1878 x 2670, cover 1398 x 2034). Only used when
+  // screen.width/height can't say how much of the screen the page was given.
+  var PANELS = [[1878, 2670], [1398, 2034]];
+  function measureStrip() {
+    STRIP = 0; STRIP_SIDE = "right"; BAND = 0;
+    if (!PAGES) return;
+    var vw = VW, vh = H, land = vw > vh;
+    var a = Math.max(screen.width || 0, screen.height || 0), b = Math.min(screen.width || 0, screen.height || 0);
+    var pw = land ? a : b, ph = land ? b : a;
+    var ok = function (d, full) { return d >= 24 && d <= Math.min(140, full * 0.22); };
+    var d = Math.round(pw - vw);
+    if (!ok(d, pw) && STANDALONE) {
+      // assume the app got the panel's full height: inner screen is ~670 / ~952 px tall,
+      // the cover screen ~498 / ~725
+      var p = (land ? vh > 585 : vh > 840) ? PANELS[0] : PANELS[1];
+      pw = vh * (land ? p[1] / p[0] : p[0] / p[1]); ph = vh; d = Math.round(pw - vw);
+    }
+    if (ok(d, pw)) {
+      STRIP = d;
+      // a window that starts right of the screen's left edge means the strip is on the left
+      var sx = window.screenX || window.screenLeft || 0;
+      if (Math.abs(sx - d) <= 2) STRIP_SIDE = "left";
+    }
+    // a home-screen app that didn't get the full height: fade the bottom edge into the gap
+    var e = Math.round(ph - vh);
+    if (STANDALONE && e >= 16 && e <= Math.min(120, ph * 0.18)) BAND = e;
+  }
+  function fadeW() { return STRIP > 0 ? Math.min(64, STRIP * 0.75) : 0; }
+  function note(e) {
+    lastErr = String((e && e.message) || e).slice(0, 90);
+    try { showDiag(); document.getElementById("diag").hidden = false; } catch (e2) {}
+  }
+  // A small line of numbers under the build label, so a screenshot of the start screen
+  // says exactly what the phone gave the page.
+  function showDiag() {
+    var el = document.getElementById("diag"); if (!el) return;
+    var vv = window.visualViewport;
+    var sa = ["Top", "Right", "Bottom", "Left"].map(function (s) { return Math.round(appInset(s)); }).join("/");
+    var parts = [VW + "×" + H, "screen " + (screen.width || 0) + "×" + (screen.height || 0), "dpr " + Math.round((window.devicePixelRatio || 1) * 100) / 100, "safe " + sa];
+    if (window.innerWidth !== VW || window.innerHeight !== H) parts.push("win " + window.innerWidth + "×" + window.innerHeight);
+    if (vv && (Math.round(vv.width) !== window.innerWidth || Math.round(vv.height) !== window.innerHeight)) parts.push("vv " + Math.round(vv.width) + "×" + Math.round(vv.height));
+    if (STRIP) parts.push("strip " + STRIP + (STRIP_SIDE === "left" ? "L" : "R"));
+    if (BAND) parts.push("band " + BAND);
+    var ang = screen.orientation && screen.orientation.angle != null ? screen.orientation.angle : window.orientation;
+    if (ang) parts.push("rot " + ang);
+    if (window.screenX) parts.push("x " + window.screenX);
+    parts.push(STANDALONE ? "app" : PAGES ? "web" : "embed");
+    if (lastErr) parts.push("err " + lastErr);
+    el.textContent = parts.join(" · ");
   }
   function rng(seed) { return function () { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
   // The background is three layers so the story scenes can reuse them: the sky with
@@ -276,8 +371,13 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   function hillY(xf) { var best = 0, bd = 9; for (var i = 0; i <= 100; i++) { var pt = hillAt(i / 100), d = Math.abs(pt[0] - xf); if (d < bd) { bd = d; best = pt[1]; } } return best; }
   var LANTERN = hillAt(0.5);                                 // the lantern sits on the summit
   var VILLAGE = [0.5, 0.64];                                 // houses along the hill's right shoulder
-  function layer() {
-    var c = document.createElement("canvas"); c.width = cv.width; c.height = cv.height;
+  // The three background layers are reused on every resize: iOS is slow to free canvas
+  // memory, and folding/unfolding or rotating a few times would otherwise pile up
+  // full-screen canvases until it starts drawing blank ones.
+  var pool = [];
+  function layer(i) {
+    var c = pool[i] || (pool[i] = document.createElement("canvas"));
+    c.width = Math.round(W * DPR); c.height = Math.round(H * DPR); // resizing also clears it
     var g = c.getContext("2d"); g.setTransform(DPR, 0, 0, DPR, 0, 0); return [c, g];
   }
   function drawMoon(g, mx, my, mr) {
@@ -290,7 +390,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     g.restore();
   }
   function paintBackground() {
-    var A = layer(), g = A[1]; skyCv = A[0];
+    var A = layer(0), g = A[1]; skyCv = A[0];
     var sky = g.createLinearGradient(0, 0, 0, H);
     sky.addColorStop(0, "#06070c"); sky.addColorStop(0.65, "#10131f"); sky.addColorStop(1, "#171a29");
     g.fillStyle = sky; g.fillRect(0, 0, W, H);
@@ -300,7 +400,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       g.fillRect(r() * W, r() * H * 0.7, r() < 0.9 ? 1 : 2, r() < 0.9 ? 1 : 2);
     }
     g.globalAlpha = 1;
-    var B = layer(); frontCv = B[0]; g = B[1];
+    var B = layer(1); frontCv = B[0]; g = B[1];
     // Wren Hill with its lantern post, and the village on its shoulder
     g.fillStyle = "#0e1019";
     g.beginPath(); g.moveTo(HILL[0][0] * W, HILL[0][1] * H);
@@ -350,7 +450,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       }
       g.lineTo(W, H); g.closePath(); g.fill();
     });
-    var C = layer(); g = C[1];
+    var C = layer(2); g = C[1];
     g.drawImage(skyCv, 0, 0, W, H); drawMoon(g, W * 0.56, H * 0.17, S * 0.065); g.drawImage(frontCv, 0, 0, W, H);
     return C[0];
   }
@@ -376,28 +476,31 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   }
   function toolbarTop() { return appInset("Top"); }
   var CLOCK_H = 44;
-  // Home-screen app in landscape: iOS keeps a strip on the right (the clock/battery column)
-  // that the page can't paint. Measure it so the UI can centre on the real screen.
-  function stripW() {
-    if (!STANDALONE || window.innerWidth <= window.innerHeight) return 0;
-    var h = window.innerHeight, w = window.innerWidth, phys = 0;
-    if (h >= 560 && h <= 640) phys = 890;        // inner screen: 2670 px / 3
-    else if (h >= 430 && h <= 470) phys = 678;   // cover screen sideways: 2034 px / 3
-    else if (window.screen) phys = Math.max(screen.width, screen.height);
-    var d = phys - w;
-    return d > 0 && d < 200 ? d : 0;
-  }
   function placeTop() {
-    var T = appInset("Top"), L = appInset("Left"), Rr = appInset("Right"), w = window.innerWidth;
-    var SW = stripW();
-    document.documentElement.style.setProperty("--strip", SW + "px");
+    var T = appInset("Top"), L = appInset("Left"), Rr = appInset("Right"), w = VW || window.innerWidth;
     var track = document.querySelector(".bar .track"), tm = $("hudTime");
-    // clock right at the top of the game, the completion line running behind its middle
-    if (STANDALONE) { L = 0; Rr = 0; }   // home-screen app: centre on the whole screen
-    tm.style.top = (T + 6) + "px"; tm.style.left = (L + (w - L - Rr) / 2 + SW / 2) + "px";
-    track.style.top = (T + 6 + CLOCK_H / 2 - 2) + "px"; track.style.left = (Math.max(16, L) + SW) + "px"; track.style.right = Math.max(16, Rr) + "px";
+    var tl = Math.max(16, L), tr = Math.max(16, Rr);
+    // clock right at the top of the game, the completion line running behind its middle.
+    // Home-screen app: centre on the whole screen; the line keeps the same distance from
+    // both edges, clear of a clock/battery column if iOS puts one inside the page.
+    if (STANDALONE) { L = 0; Rr = 0; tl = tr = Math.max(tl, tr); }
+    // The phone's strip: moving toward it by half its width puts things in the middle of
+    // the real screen. sh > 0: strip on the right.
+    var sh = STRIP_SIDE === "left" ? -STRIP : STRIP;
+    // the clock sits on the middle of the line it rides on
+    tm.style.top = (T + 6) + "px"; tm.style.left = ((tl + w - tr) / 2 + sh / 2) + "px";
+    track.style.top = (T + 6 + CLOCK_H / 2 - 2) + "px";
+    track.style.left = (tl + Math.max(0, sh)) + "px"; track.style.right = (tr + Math.max(0, -sh)) + "px";
     var rs = document.documentElement.style;
     rs.setProperty("--ins-t", T + "px"); rs.setProperty("--ins-l", L + "px"); rs.setProperty("--ins-r", Rr + "px");
+    // cards (440 wide), the HUD row (~300) and captions (~450) shift only as far as their
+    // width allows, so a narrow screen keeps full-width cards instead of squeezed ones
+    [["ov", 440 + 32], ["hud", 300 + 32], ["cap", 450 + 32]].forEach(function (k) {
+      var s = Math.max(0, Math.min(STRIP, w - k[1]));
+      rs.setProperty("--sh-" + k[0] + "-l", (sh > 0 ? s : 0) + "px");
+      rs.setProperty("--sh-" + k[0] + "-r", (sh < 0 ? s : 0) + "px");
+      if (k[0] === "ov") rs.setProperty("--ov-cx", "calc(50% + " + (sh < 0 ? -s : s) / 2 + "px)");
+    });
     // keep the nests (and the wasps that circle them) inside the playable width
     NESTS[0].x = Math.min(0.85, xMax() - 0.05); NESTS[1].x = Math.max(0.15, xMin() + 0.05);
   }
@@ -411,11 +514,22 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     if (T > 0) return y < (T + 10) / H && x > 0.75;
     return false;
   }
-  function xMin() { return STANDALONE ? 0.04 : Math.max(0.04, (appInset("Left") + 22) / (W || window.innerWidth)); }
-  function xMax() { return STANDALONE ? 0.96 : Math.min(0.96, 1 - (appInset("Right") + 22) / (W || window.innerWidth)); }
-  // bugs stay below the clock
+  // Limits as fractions of the picture (W), from what's actually on screen (OX to OX+VW),
+  // also keeping out of the darkest part of the fade into the phone's strip.
+  function xMin() {
+    var m = STANDALONE ? 0.04 * VW : Math.max(0.04 * VW, appInset("Left") + 22);
+    if (STRIP_SIDE === "left") m = Math.max(m, fadeW() * 0.6);
+    return (OX + m) / (W || 1);
+  }
+  function xMax() {
+    var m = STANDALONE ? 0.04 * VW : Math.max(0.04 * VW, appInset("Right") + 22);
+    if (STRIP_SIDE === "right") m = Math.max(m, fadeW() * 0.6);
+    return (OX + VW - m) / (W || 1);
+  }
+  // bugs stay below the clock, and above the HUD of what's visible (Safari's toolbars can
+  // cover the bottom of the canvas)
   function topY() { return (appInset("Top") + 6 + CLOCK_H + 14) / H; }
-  function botY() { return Math.min(1 - (inset("Bottom") + 96) / H, 0.86); }
+  function botY() { var vis = Math.min(H, window.innerHeight || H); return Math.min((vis - inset("Bottom") - 96) / H, 0.86); }
 
   function distTo(nest, x, y) { var dx = (x - nest.x) * W, dy = (y - nest.y) * H; return Math.sqrt(dx * dx + dy * dy); }
   function nearNest(x, y) { for (var k = 0; k < P.nests; k++) if (distTo(NESTS[k], x, y) < S * 0.25) return true; return false; }
@@ -460,21 +574,23 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     if (state === "scene") { e.preventDefault(); if (scene && scene.t > 0.8) endScene(); return; }
     if (state !== "play") return;
     e.preventDefault();
-    var px = e.clientX, py = e.clientY, hit = null, bestD = 1e9;
-    // poking a nest lets out three more wasps
-    for (var nk = 0; nk < P.nests; nk++) {
-      if (distTo(NESTS[nk], px / W, py / H) < Math.max(30, S * 0.065)) {
-        for (var q = 0; q < 3; q++) { spawn("wasp"); var nw = bugs[bugs.length - 1]; nw.home = nk; nw.x = NESTS[nk].x + (Math.random() - 0.5) * 0.03; nw.y = NESTS[nk].y + 0.03; }
-        shake = 0.2; beep(140, 0.25, "sawtooth", 0.12); float(px, py, "+3 wasps", "#c3161f");
-        return;
-      }
-    }
+    var px = e.clientX + OX, py = e.clientY, hit = null, bestD = 1e9;
     var reach = Math.max(36, S * 0.1); // generous, finger-sized
     for (var i = 0; i < bugs.length; i++) {
       var b = bugs[i];
       // dark fireflies are invisible but can still be caught, if you guess where they went
       var dx = b.x * W - px, dy = b.y * H - py, d = Math.sqrt(dx * dx + dy * dy);
       if (d < reach && d < bestD) { hit = i; bestD = d; }
+    }
+    // poking a nest lets out three more wasps, unless the tap was closer to a bug drifting
+    // in front of it (grabbing a firefly by the nest shouldn't count as a poke)
+    for (var nk = 0; nk < P.nests; nk++) {
+      var dn = distTo(NESTS[nk], px / W, py / H);
+      if (dn < Math.max(30, S * 0.065) && (hit === null || dn < bestD)) {
+        for (var q = 0; q < 3; q++) { spawn("wasp"); var nw = bugs[bugs.length - 1]; nw.home = nk; nw.x = NESTS[nk].x + (Math.random() - 0.5) * 0.03; nw.y = NESTS[nk].y + 0.03; }
+        shake = 0.2; beep(140, 0.25, "sawtooth", 0.12); float(px, py, "+3 wasps", "#c3161f");
+        return;
+      }
     }
     if (hit === null) {
       clock = Math.max(0, clock - P.miss); stats.misses++;
@@ -582,11 +698,21 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 
   // ---- Loop --------------------------------------------------------------
   function frame(ts) {
-    var dt = Math.min(0.05, (ts - (last || ts)) / 1000); last = ts;
-    if (state === "scene") { stepScene(dt, ts / 1000); requestAnimationFrame(frame); return; }
-    if (state === "play") update(dt);
-    draw(ts / 1000);
+    // the next frame is booked first, so one bad frame can't stop the game for good
     requestAnimationFrame(frame);
+    try {
+      checkSize();
+      var dt = Math.min(0.05, (ts - (last || ts)) / 1000); last = ts;
+      // the sting shake and red flash wear off in every state, not only during play
+      // (they used to stay on, shaking and red, behind the "Stung out" card)
+      shake = Math.max(0, shake - dt); flash = Math.max(0, flash - dt * 3);
+      if (state === "scene") { stepScene(dt, ts / 1000); return; }
+      if (state === "play") update(dt);
+      draw(ts / 1000);
+    } catch (e) {
+      note(e);
+      try { cv.width = cv.width; baseTransform(0, 0); } catch (e2) {} // drops any unbalanced save()
+    }
   }
 
   function angDiff(a, b) { var d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; }
@@ -657,25 +783,26 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       if (s.t > s.life) sparks.splice(j, 1);
     }
     for (var q = texts.length - 1; q >= 0; q--) { texts[q].t += dt; if (texts[q].t > 0.8) texts.splice(q, 1); }
-    shake = Math.max(0, shake - dt); flash = Math.max(0, flash - dt * 3);
     setClock();
   }
 
   function draw(t) {
     cx.save();
     var k0 = shake / 0.35, sx = shake > 0 ? (Math.random() - 0.5) * S * 0.03 * k0 : 0, sy = shake > 0 ? (Math.random() - 0.5) * S * 0.03 * k0 : 0;
-    cx.setTransform(DPR, 0, 0, DPR, sx * DPR, sy * DPR);
+    baseTransform(sx, sy);
     if (bg) cx.drawImage(bg, 0, 0, W, H);
     drawWorldBack(t);
     var r = S * 0.022;
     if (state !== "title") for (var nk = 0; nk < P.nests; nk++) drawNest(NESTS[nk], t + nk * 1.7);
     if (state === "play" && (gustWarn > 0 || gustOn > 0)) drawGust(t);
-    var list = state === "play" ? bugs : ambient(t);
+    // behind the end-of-night and pause cards the meadow stays as it was, frozen
+    var live = state === "play" || state === "end" || state === "paused";
+    var list = live ? bugs : ambient(t);
     for (var i = 0; i < list.length; i++) {
       var b = list[i], x = b.x * W, y = b.y * H;
-      var fade = state === "play" ? Math.min(1, (b.life - b.age) / (b.life * 0.35)) : 1;
+      var fade = live ? Math.min(1, (b.life - b.age) / (b.life * 0.35)) : 1;
       if (b.kind === "wasp") drawWasp(x, y, r, b, t, fade);
-      else drawFly(x, y, r, b, t, fade, b.kind === "gold", state === "play" && isDark(b));
+      else drawFly(x, y, r, b, t, fade, b.kind === "gold", live && isDark(b));
     }
     drawWorldFront(t);
     for (var j = 0; j < sparks.length; j++) {
@@ -696,7 +823,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       v.addColorStop(0, "rgba(120,6,10,0)"); v.addColorStop(1, "rgba(120,6,10," + (0.7 * flash) + ")");
       cx.fillStyle = v; cx.fillRect(0, 0, W, H);
     }
-    topFade();
+    topFade(); edgeFade();
     cx.restore();
   }
 
@@ -708,6 +835,22 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     var g = cx.createLinearGradient(0, T, 0, T + h);
     g.addColorStop(0, "rgba(6,7,12,1)"); g.addColorStop(1, "rgba(6,7,12,0)");
     cx.fillStyle = g; cx.fillRect(0, T, W, h);
+  }
+  // Same for the strip the phone keeps for its clock and battery (and a missing band at
+  // the bottom), which the page can't paint: the meadow fades into its colour.
+  function edgeFade() {
+    var f = fadeW();
+    if (f > 0) {
+      var x1 = STRIP_SIDE === "left" ? OX : OX + VW, x0 = STRIP_SIDE === "left" ? x1 + f : x1 - f;
+      var g = cx.createLinearGradient(x0, 0, x1, 0);
+      g.addColorStop(0, "rgba(6,7,12,0)"); g.addColorStop(1, "rgba(6,7,12,1)");
+      cx.fillStyle = g; cx.fillRect(Math.min(x0, x1), 0, f, H);
+    }
+    if (BAND > 0) {
+      var h = Math.min(48, BAND), gb = cx.createLinearGradient(0, H - h, 0, H);
+      gb.addColorStop(0, "rgba(6,7,12,0)"); gb.addColorStop(1, "rgba(6,7,12,1)");
+      cx.fillStyle = gb; cx.fillRect(OX, H - h, VW, h);
+    }
   }
 
   function drawNest(nest, t) {
@@ -974,10 +1117,8 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       if (off < SFX[scene.key].duration - 0.5) scene.voice = playBuf(scene.key, 1, off < 0 ? -off : 0, off > 0 ? off : 0);
     }
     if (scene.t >= scene.realDur) { endScene(); return; }
-    cx.save(); cx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    scene.def.draw(sceneTime(scene.t), T);
-    topFade();
-    cx.restore();
+    cx.save(); baseTransform(0, 0);
+    try { scene.def.draw(sceneTime(scene.t), T); topFade(); edgeFade(); } finally { cx.restore(); }
     var c = "", caps = scene.caps;
     for (var i = 0; i < caps.length; i++) if (scene.t >= caps[i][0] && scene.t < caps[i][1]) c = caps[i][2];
     if (c !== scene.cap) { scene.cap = c; if (c) $("caption").textContent = c; $("caption").classList.toggle("off", !c); }
@@ -1075,7 +1216,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     cx.font = "700 " + fs + "px 'Baloo 2', system-ui, sans-serif";
     var w = 0; lines.forEach(function (l) { w = Math.max(w, cx.measureText(l).width); });
     var pad = fs * 0.6, bw = w + pad * 2, bh = lines.length * fs * 1.2 + pad * 1.4;
-    var bx = Math.max(8, Math.min(W - bw - 8, x - bw * 0.3)), by = y - bh - fs * 0.8;
+    var bx = Math.max(OX + 8, Math.min(OX + VW - bw - 8, x - bw * 0.3)), by = y - bh - fs * 0.8;
     cx.fillStyle = "#f3f0ff"; rr(bx, by, bw, bh, fs * 0.5); cx.fill();
     cx.beginPath(); cx.moveTo(x - fs * 0.3, by + bh - 1); cx.lineTo(x, y); cx.lineTo(x + fs * 0.4, by + bh - 1); cx.fill();
     cx.fillStyle = "#0a0f24"; cx.textAlign = "left"; cx.textBaseline = "top";
@@ -1538,6 +1679,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   function endNight(won, why) {
     state = "end";
     texts = []; sparks = []; // the meadow freezes behind the card; don't leave labels hanging
+    gustOn = 0; gustWarn = 0; // or the leaves keep racing on every screen after a gusty finish
     record(night, won, why);
     if (won) {
       cleared = Math.max(cleared, night);
@@ -1596,6 +1738,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   };
   $("btnGo").onclick = goHandler;
   $("btnMenu").onclick = titleScreen;
+  $("build").onclick = function () { showDiag(); $("diag").hidden = !$("diag").hidden; };
   $("btnStory").onclick = function () {
     seen = {}; try { localStorage.removeItem(SEEN_KEY); } catch (e) {}
     $("btnStory").textContent = "The story will play again"; $("btnStory").disabled = true;
@@ -1606,6 +1749,8 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   $("btnSound").onclick = function () {
     sound = !sound; $("btnSound").textContent = "Sound: " + (sound ? "on" : "off");
     if (master) master.gain.value = sound ? 1 : 0;
+    // the silent keep-alive loop is what puts the game in the Dynamic Island; stop it too
+    if (!sound && silentEl) { try { silentEl.pause(); } catch (e) {} }
     if (sound) unlockAudio(); duck(state === "scene");
     try { localStorage.setItem("fireflyJarSound", sound ? "1" : "0"); } catch (e) {}
   };
@@ -1625,12 +1770,18 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   });
 
   // read-only peek used by automated play-tests; harmless for players
-  window.__fireflyPeek = function () { return { state: state, gustWarn: gustWarn, caught: caught, lives: lives, clock: clock, W: W, H: H,
+  window.__fireflyPeek = function () { return { state: state, gustWarn: gustWarn, caught: caught, lives: lives, clock: clock, W: W, H: H, VW: VW, OX: OX, strip: STRIP, band: BAND,
+    shake: shake, flash: flash, gustOn: gustOn, nests: NESTS.map(function (n) { return [n.x, n.y]; }), xMin: xMin(), xMax: xMax(), botY: botY(), err: lastErr,
     bugs: bugs.map(function (b) { return { kind: b.kind, x: b.x, y: b.y, dark: isDark(b), age: b.age }; }) }; };
 
   window.__fireflyScene = function (key) { delete seen[key]; playScene(key, titleScreen); }; // play-test hook
 
-  window.addEventListener("resize", resize);
+  // iOS can report the old size while a rotate or fold is still settling, so check again a
+  // few times afterwards; the size is also checked on every frame.
+  window.addEventListener("resize", settle);
+  window.addEventListener("orientationchange", settle);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", settle);
+  try { if (window.ResizeObserver) new ResizeObserver(function () { checkSize(); }).observe(cv); } catch (e) {}
   resize();
   titleScreen();
   requestAnimationFrame(frame);
