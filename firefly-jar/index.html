@@ -72,8 +72,8 @@ canvas { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; height: 
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
 }
 .caption {
-  margin: 0; max-width: 32ch; text-align: center; text-wrap: balance;
-  font: 600 clamp(16px, 4.2vw, 21px)/1.35 var(--display); color: var(--ink);
+  margin: 0; max-width: 44ch; text-align: center; text-wrap: balance;
+  font: 600 clamp(15px, 3.6vw, 19px)/1.35 var(--display); color: var(--ink);
   background: rgba(10, 15, 36, 0.72); border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px 7px;
   transition: opacity .35s;
 }
@@ -118,7 +118,7 @@ h2 { font: 800 clamp(32px, 9vw, 48px)/1 var(--display); margin: 0; text-wrap: ba
 .legend span { display: inline-flex; align-items: center; gap: 7px; }
 .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
 .dot.fly { background: var(--glow); box-shadow: 0 0 10px var(--glow); }
-.dot.wasp { background: var(--wasp); }
+.dot.wasp { background: #c9cdd8; box-shadow: inset 0 0 0 3px #14121f; }
 .dot.gold { background: #ffc828; box-shadow: 0 0 12px #ffc828; }
 .dot.miss { border: 1.5px dashed var(--muted); }
 .dot.gust { width: auto; height: auto; border-radius: 0; color: var(--ink); font: 800 14px/12px var(--display); }
@@ -162,7 +162,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   <div class="card">
     <div class="eyebrow">Five summer nights on Wren Hill</div>
     <h1>Firefly Jar</h1>
-    <p>The old lantern on the hill needs fireflies before the solstice festival. Each night, catch <b>20</b> before the moon sets, about <b>30 seconds</b>. Three stings and you're done for the night.</p>
+    <p>The old lantern on Wren Hill has to be fed before the solstice. Each night, catch <b>20</b> before the moon sets, about <b>30 seconds</b>. Three stings and you're done for the night.</p>
     <div class="rules">
       <span><i class="dot fly"></i>Firefly +1, and a little time back.</span>
       <span><i class="dot gold"></i>Golden +3. Rare and quick.</span>
@@ -176,7 +176,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       <button class="go" id="btnStart" type="button">Start night 1</button>
       <button class="ghost" id="btnSound" type="button">Sound: on</button>
       <button class="ghost" id="btnStory" type="button" hidden>Replay the story</button>
-      <span class="build" id="build">Build 16</span>
+      <span class="build" id="build">Build 17</span>
     </div>
   </div>
 </div>
@@ -327,7 +327,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     });
     bigTree(W * 0.95, 1, NESTS[0], "#0b1029");
     bigTree(W * 0.05, -1, NESTS[1], "#0b1029");
-    [["#121a3d", 0.13, 11], ["#0b1029", 0.08, 23]].forEach(function (L) {
+    [["#121a3d", 0.13, 11], ["#0b1029", 0.08, 23], ["#080c22", 0.025, 37]].forEach(function (L) {
       var rr = rng(L[2]); g.fillStyle = L[0]; g.beginPath(); g.moveTo(0, H);
       var base = H - H * L[1];
       for (var x = 0; x <= W + 8; x += 6) {
@@ -699,14 +699,17 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     var R = r * 1.35;
     cx.save(); cx.translate(x, y); cx.rotate(b.a); cx.globalAlpha = Math.max(0.3, fade);
     var halo = cx.createRadialGradient(0, 0, 0, 0, 0, R * 2.6);
-    halo.addColorStop(0, "rgba(255,106,61,.35)"); halo.addColorStop(1, "rgba(255,106,61,0)");
+    halo.addColorStop(0, "rgba(215,222,240,.32)"); halo.addColorStop(1, "rgba(215,222,240,0)");
     cx.fillStyle = halo; cx.beginPath(); cx.arc(0, 0, R * 2.6, 0, 7); cx.fill();
     var flap = Math.sin(t * 60) * 0.35;
     cx.fillStyle = "rgba(220,230,255,.55)";
     cx.beginPath(); cx.ellipse(-R * 0.1, -R * 0.75, R * 0.7, R * 0.35, -0.5 + flap, 0, 7); cx.fill();
     cx.beginPath(); cx.ellipse(-R * 0.1, R * 0.75, R * 0.7, R * 0.35, 0.5 - flap, 0, 7); cx.fill();
-    cx.fillStyle = "#ff6a3d"; cx.beginPath(); cx.ellipse(0, 0, R * 1.15, R * 0.62, 0, 0, 7); cx.fill();
-    cx.fillStyle = "#1b1530";
+    // ash-grey paper-wasp body with near-black bands: realistic, still bright on the night
+    var body = cx.createLinearGradient(0, -R * 0.62, 0, R * 0.62);
+    body.addColorStop(0, "#e2e5ee"); body.addColorStop(1, "#9ea4b5");
+    cx.fillStyle = body; cx.beginPath(); cx.ellipse(0, 0, R * 1.15, R * 0.62, 0, 0, 7); cx.fill();
+    cx.fillStyle = "#14121f";
     cx.fillRect(-R * 0.35, -R * 0.6, R * 0.22, R * 1.2); cx.fillRect(R * 0.15, -R * 0.55, R * 0.22, R * 1.1);
     cx.beginPath(); cx.moveTo(-R * 1.1, 0); cx.lineTo(-R * 1.6, -R * 0.12); cx.lineTo(-R * 1.6, R * 0.12); cx.fill();
     cx.restore();
@@ -859,7 +862,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   // Where each spoken line starts and ends inside its narration file (seconds),
   // measured from the ElevenLabs audio. Each scene's animation is stretched to match,
   // so captions and action land on Grandma's words. Same timing with sound off.
-  var VOICE = {"open": [[0.0, 3.89], [5.13, 8.68], [10.02, 13.24]], "s1": [[0.0, 2.74], [3.83, 5.85], [7.05, 12.55], [13.63, 17.95]], "s2": [[0.0, 5.85], [7.03, 10.55], [12.0, 15.15]], "s3": [[0.0, 3.77], [4.98, 7.43], [8.49, 12.6], [13.82, 15.88]], "s4": [[0.0, 5.01], [6.6, 9.9], [11.0, 12.84], [13.97, 16.27]], "end": [[0.0, 3.77], [4.95, 6.52], [7.65, 11.11], [12.0, 17.31], [18.37, 21.39]], "fail_stung": [[0.0, 4.91]], "fail_time": [[0.0, 4.75]]};
+  var VOICE = {"open": [[0.0, 14.57], [15.93, 22.19], [23.61, 31.79]], "s1": [[0.0, 6.41], [7.6, 13.45], [15.06, 24.79], [26.33, 34.35]], "s2": [[0.0, 11.34], [12.78, 19.35], [20.96, 29.57]], "s3": [[0.0, 9.37], [10.57, 17.27], [18.36, 27.62], [28.63, 34.93]], "s4": [[0.0, 10.71], [12.26, 19.6], [21.03, 27.81], [29.3, 37.07]], "end": [[0.0, 8.54], [9.65, 17.06], [18.46, 24.1], [25.58, 35.92], [37.5, 45.4]], "fail_stung": [[0.0, 12.12]], "fail_time": [[0.0, 9.95]]};
   var VOICE_LEAD = 0.4;
   var scene = null;
   function playScene(key, done) {
@@ -1058,7 +1061,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 
   var SCENES = {
     // Before night 1: the jar, the dark lantern, the clearing waking up
-    open: { dur: 11, say: [[0.3, 3.1, "Every summer, the lantern on Wren Hill goes dark."], [3.2, 6.0, null], [6.7, 11, "Down in the clearing, the fireflies are waking up."]],
+    open: { dur: 11, say: [[0.3, 3.1, "Every summer, the lantern on Wren Hill goes dark. The old folks say it's the wind. It isn't. It burns down to nothing on the first warm night, the same night the woods start breathing again."], [3.2, 6.0, null], [6.7, 11, "Down in the clearing, the fireflies are waking. Pretty little things. Hold on to that thought, child. You'll want it later."]],
       draw: function (t, T) {
         var pan = ease(seg(t, 6, 8.6)), py = -H * pan;
         meadow(T, 1);
@@ -1073,7 +1076,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
         var f = porchFolk(T, py, { gArm: gArm, kArm: hand > 0 ? lerp(0.35, 1.0, seg(t, 1.6, 2.6)) : 0.35 });
         var jx = hand < 1 ? lerp(f.g.x, f.k.x, hand) : f.k.x, jy = hand < 1 ? lerp(f.g.y, f.k.y, hand) : f.k.y;
         if (t > 0.9) jar(jx, jy + S * 0.05, S * 0.06, 0, T);
-        if (t > 3.2 && t < 6.2) bubble(f.g.x - S * 0.06, H * 0.8 + py - S * 0.3, "Five nights till the festival.\nFill it before then.");
+        if (t > 3.2 && t < 6.2) bubble(f.g.x - S * 0.06, H * 0.8 + py - S * 0.3, "Five nights till the festival.\nFill this jar before then.\nAnd never, ever let it go out.");
         for (var i = 0; i < 12; i++) {
           var on = seg(t, 7.6 + i * 0.25, 8 + i * 0.25);
           if (on > 0) flyAt(SPOTS[i][0] * W, SPOTS[i][1] * H, T, 1, false, on);
@@ -1081,7 +1084,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       } },
 
     // After night 1: a trip, the rolling jar, the nest in the oak, a storm turning
-    s1: { dur: 11, say: [[0.3, 3.1, "Walking home with a full jar..."], [3.2, 4.9, "...until a root catches your foot."], [5, 7.6, "The jar rolls to the old oak, and its light finds something grey and papery."], [7.8, 11, "Far off over the ridge, a storm turns toward the oak."]],
+    s1: { dur: 11, say: [[0.3, 3.1, "You walked home that first night with a full jar, proud as anything, humming to yourself..."], [3.2, 4.9, "...until a root caught your foot. Funny. That root wasn't there when you walked in."], [5, 7.6, "The jar rolled all the way to the old oak, and its light crawled up the bark and found something grey and papery, breathing in the branches."], [7.8, 11, "Far off over the ridge, a storm was turning. Not drifting. Turning. Like something that had heard you."]],
       draw: function (t, T) {
         meadow(T, 1);
         clouds(T, H * 0.5, 0.6, 0.01, 4, "#151b40");
@@ -1116,7 +1119,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       } },
 
     // After night 2: fireflies learn to hide
-    s2: { dur: 11, say: [[0.3, 4.4, "A wasp closes in. The firefly goes dark, and the wasp loses it."], [4.6, 7.4, "Even in the jar, they flicker when a wasp comes near."], [7.6, 11, null]],
+    s2: { dur: 11, say: [[0.3, 4.4, "A wasp closes in. The firefly goes dark, and just like that, the wasp loses it. Hunters only see what's lit. Remember that."], [4.6, 7.4, "Even sealed in the jar, they flicker when a wasp comes near. They know what's out there better than you do."], [7.6, 11, null]],
       draw: function (t, T) {
         if (t < 4.5) {
           meadow(T, 2); dim(0.55);
@@ -1137,12 +1140,12 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
           meadow(T, 2); porchSet(T, 0);
           var f = porchFolk(T, 0, { gArm: 0.9 });
           jar(f.k.x, f.k.y + S * 0.05, S * 0.06, 0.6, T);
-          bubble(f.g.x - S * 0.04, H * 0.8 - S * 0.3, "They hide in the dark.\nWait for them to shine.");
+          bubble(f.g.x - S * 0.04, H * 0.8 - S * 0.3, "They hide in the dark, child.\nWait for them to shine.\nIf you can't see them,\nnothing else can either. Mostly.");
         }
       } },
 
     // After night 3: the beech branch, the second nest, and the wasps start hunting
-    s3: { dur: 12, say: [[0.3, 3, "The high fireflies are out of reach. You need a stick."], [3.1, 5.2, "The old beech has a good low branch."], [5.4, 8.2, "It snaps, and something hidden in the beech wakes up angry."], [8.4, 12, "They've stopped waiting for luck."]],
+    s3: { dur: 12, say: [[0.3, 3, "The high fireflies were out of reach, so you went looking for a stick. Your grandfather did the same thing, the summer he didn't come home."], [3.1, 5.2, "The old beech had one good low branch. I told you never to touch the beech. Didn't I tell you?"], [5.4, 8.2, "It snapped, and something hidden in the beech woke up angry. Something that had been waiting a very long time for someone to break the rules."], [8.4, 12, "They've stopped waiting for luck now. They hunt. And they've learned the sound of your footsteps."]],
       draw: function (t, T) {
         var gy = H * 0.86;
         if (t < 8.3) {
@@ -1185,7 +1188,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       } },
 
     // After night 4: festival prep, the storm wall, both nests, a bigger jar
-    s4: { dur: 13, say: [[0.3, 4, "In the village, the streamers are up and the lanterns wait, unlit."], [4.2, 6.4, "Over the ridge, the storm is coming in for real."], [6.6, 9, "Both nests are boiling."], [9.4, 13, null]],
+    s4: { dur: 13, say: [[0.3, 4, "In the village, the streamers are up and the lanterns wait, unlit. Nobody talks about why every house leaves one window dark on solstice eve."], [4.2, 6.4, "Over the ridge, the storm is coming in for real. It always comes the night before. It always has."], [6.6, 9, "Both nests are boiling now, thousands of them, and every single one is listening for that jar."], [9.4, 13, null]],
       draw: function (t, T) {
         if (t < 6.5) {
           var tilt = ease(seg(t, 4, 6.2));
@@ -1212,12 +1215,12 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
           var hand = ease(seg(t, 9.6, 10.8));
           var f = porchFolk(T, 0, { gArm: lerp(1.4, 0.4, seg(t, 10.8, 11.4)), kArm: lerp(0.35, 1.0, hand) });
           jar(lerp(f.g.x, f.k.x, hand), lerp(f.g.y, f.k.y, hand) + S * 0.07, S * 0.09, 0, T);
-          if (t > 9.4) bubble(f.g.x - S * 0.04, H * 0.8 - S * 0.3, "Last one.\nMake it count.");
+          if (t > 9.4) bubble(f.g.x - S * 0.04, H * 0.8 - S * 0.3, "Last one. Make it count.\nAnd whatever you hear behind you\nup on that hill... don't turn around.");
         }
       } },
 
     // After night 5: the climb, the lantern, the village answers, the storm breaks
-    end: { dur: 16, say: [[0.3, 4.4, "Up Wren Hill, with the fullest jar of the summer."], [4.6, 6.4, "The lantern catches..."], [6.6, 9.4, "...and down in the village, every lantern answers."], [9.6, 12.4, "The storm breaks. The wasps go home. The clearing glows."], [12.8, 16, "Next summer, the lantern will need you again."]],
+    end: { dur: 16, say: [[0.3, 4.4, "Up Wren Hill you climbed, with the fullest jar of the summer, and something heavy following three steps behind."], [4.6, 6.4, "The lantern caught. And for one moment, it burned so bright you could see every face inside the flame."], [6.6, 9.4, "Down in the village, every lantern answered. Every window but one."], [9.6, 12.4, "The storm broke. The wasps went home. The clearing glowed. And the woods went quiet, the way a mouth goes quiet when it's full."], [12.8, 16, "That's how it's done, child. Every summer, the lantern needs someone. Next summer... it will need you."]],
       draw: function (t, T) {
         var top = [W * 0.62, H * 0.42], p0 = [-W * 0.05, H], c1 = [W * 0.2, H * 0.72], c2 = [W * 0.45, H * 0.42];
         function onHill(p) { var q = 1 - p; return [q * q * q * p0[0] + 3 * q * q * p * c1[0] + 3 * q * p * p * c2[0] + p * p * p * top[0], q * q * q * p0[1] + 3 * q * q * p * c1[1] + 3 * q * p * p * c2[1] + p * p * p * top[1]]; }
@@ -1272,7 +1275,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       } },
 
     // The first time you're stung out
-    fail_stung: { dur: 5, say: [[0.3, 5, "Let me ice that hand. Your jar's still glowing, half full."]],
+    fail_stung: { dur: 5, say: [[0.3, 5, "There now, let me ice that hand. You know, wasps remember a face. Your jar's still half full... but half full won't hold them back. Not for long."]],
       draw: function (t, T) {
         cx.fillStyle = "#211c36"; cx.fillRect(0, 0, W, H);
         cx.fillStyle = "#0d1440"; cx.fillRect(W * 0.58, H * 0.16, W * 0.3, H * 0.2);
@@ -1291,7 +1294,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       } },
 
     // The first time the clock runs out
-    fail_time: { dur: 5, say: [[0.3, 5, "The moon sinks behind the trees, and the fireflies drift off."]],
+    fail_time: { dur: 5, say: [[0.3, 5, "The moon slipped behind the trees, and the fireflies drifted off into the woods. Funny thing about the woods. They don't give back what they take."]],
       draw: function (t, T) {
         var sink = ease(seg(t, 0.3, 4.2));
         cx.drawImage(skyCv, 0, 0, W, H);
@@ -1396,20 +1399,20 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   // The story of the five nights. Each night's new danger is in **bold** in its text.
   var STORY = [
     { name: "The First Warm Night",
-      text: "Every summer the old lantern on Wren Hill goes dark, and every summer someone has to fill it again. Five nights until the solstice festival. Tonight is gentle: the fireflies drift slow and low over the clearing, and only a few wasps wander in from the trees. Once in a while one **blunders into a firefly and eats it**. Twenty for the jar before the moon sets.",
-      won: "Walking home, you notice something grey and papery hanging in the old oak at the edge of the clearing." },
+      text: "Every summer the old lantern on Wren Hill goes dark, and every summer someone has to feed it again. Grandma won't say what happens if nobody does. Five nights until the solstice. Tonight is gentle: the fireflies drift slow and low over the clearing, and only a few wasps wander out of the trees. Once in a while one **blunders into a firefly and eats it**. Twenty for the jar before the moon sets.",
+      won: "Walking home, a root you don't remember catches your foot, and the jar rolls toward the old oak, toward something grey and papery that wasn't there yesterday." },
     { name: "The Nest in the Oak",
-      text: "That grey thing in the oak is a **wasps' nest**, and tonight it's awake. A storm is coming off the ridge, and **nearly every gust rolls toward the oak**, sweeping fireflies straight into the wasps hanging around their nest. Catch them before the wind delivers them.",
-      won: "Near the end of the night you saw something new: fireflies by the oak went dark whenever a wasp drifted close." },
+      text: "That grey thing in the oak is a **wasps' nest**, and tonight it's awake. A storm is coming off the ridge, and **nearly every gust rolls toward the oak**, sweeping fireflies straight into the swarm like it's feeding them. Catch them before the wind does.",
+      won: "Near the end of the night you saw the fireflies by the oak going dark whenever a wasp drifted close. They knew something you didn't." },
     { name: "The Dark Between",
-      text: "The fireflies have learned to hide. They **flash, then vanish into the dark**, and a wasp can't eat what it can't see. You can still catch one in the dark, **if you guess where it drifted**, but grabbing at nothing costs you time.",
-      won: "The wasps went hungry tonight. Grandma says hungry wasps stop waiting for luck." },
+      text: "The fireflies have learned to hide. They **flash, then vanish into the dark**, and a wasp can't eat what it can't see. You can still catch one in the dark, **if you guess where it drifted**, but every grab at nothing costs you time, and the woods are counting.",
+      won: "The wasps went hungry tonight. Grandma says hungry things stop waiting for luck. Then she asks if you touched the beech." },
     { name: "The Hunt",
       text: "The wasps aren't drifting anymore. They **pick out a lit firefly and chase it down**, and a firefly only escapes if it goes dark in time. And the branch you cut from the old beech **woke a second nest**, so now the wind blows trouble from both sides.",
-      won: "One night left. Down in the village they're already hanging paper streamers." },
+      won: "One night left. Down in the village every house is hanging streamers, and every house is leaving one window dark." },
     { name: "Solstice Eve",
-      text: "The last night before the festival, and **it all comes together**: the storm, both nests, the hiding, the hunting, and the fastest fireflies of the summer. Twenty lights, or Wren Hill stays dark this year.",
-      won: "The lantern on Wren Hill burns gold for the festival." }
+      text: "The last night before the festival, and **it all comes together**: the storm, both nests, the hiding, the hunting, and the fastest fireflies of the summer. Twenty lights, or Wren Hill stays dark this year, and Grandma has gone very quiet about what that means.",
+      won: "The lantern on Wren Hill burns gold for the festival. Grandma is smiling at you in a way you don't like." }
   ];
   function storyHtml(t) { return esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
 
@@ -1471,8 +1474,8 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       $("endEyebrow").textContent = STORY[night - 1].name;
       $("endTitle").textContent = why === "stung" ? "Stung out" : "The moon set";
       $("endText").textContent = why === "stung"
-        ? "Three stings, and Grandma calls you in to ice your hand. Take the fireflies the wasps aren't near."
-        : "The moon slipped behind the willow with " + caught + " in the jar. The fireflies come to a steady hand: wait for the light, then grab.";
+        ? "Three stings, and Grandma drags you inside before the swarm can follow you home. Take the fireflies the wasps aren't near."
+        : "The moon slipped behind the trees with " + caught + " in the jar, and somewhere in the woods something laughed. Wait for the light, then grab.";
       $("endStats").innerHTML = line;
       $("btnEnd").textContent = "Try " + STORY[night - 1].name + " again";
       $("btnEnd").onclick = function () { intro(night); };
