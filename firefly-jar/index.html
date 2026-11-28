@@ -46,21 +46,18 @@ canvas { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; height: 
 .time.low { color: var(--wasp); }
 .build { font: 500 11px/1 var(--body); color: var(--muted); opacity: .6; letter-spacing: .06em; }
 #insetProbe { position: fixed; left: 0; top: 0; width: 0; height: 0; visibility: hidden; pointer-events: none;
-  padding-top: env(safe-area-inset-top, 0px); }
-/* Clock top-centre, catches and lives bottom-centre: the middle of each edge is where
-   a thumb is least likely to sit. Inside the Claude app the top safe area is the app's
-   toolbar (close button left, button pill right), so the clock sits centred in that
-   toolbar row, where nothing else is, and the completion line runs just below it. With
-   no toolbar (a plain browser) the clock sits at the top with the line under it. */
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+/* Completion line along the very top of the game, clock centred just under it; night,
+   catches and lives at the bottom centre. Positions come from placeTop(), which keeps
+   everything clear of the Claude app's buttons (a top toolbar on the inner screen, a
+   column down the right side on the cover screen). */
 .bar { position: fixed; left: 0; right: 0; top: 0; height: 0; z-index: 2; pointer-events: none; }
 .bar .time {
-  position: absolute; left: 50%; transform: translateX(-50%);
-  top: max(6px, calc(env(safe-area-inset-top, 0px) * 0.45 - 21px));
+  position: absolute; left: 50%; transform: translateX(-50%); top: 20px;
   font: 800 clamp(20px, 5vw, 26px)/1 var(--display); font-variant-numeric: tabular-nums; min-width: 2.6em; text-align: center;
 }
 .bar .track {
-  position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
-  top: max(56px, calc(env(safe-area-inset-top, 0px) + 6px));
+  position: absolute; left: 16px; right: 16px; top: 8px;
   height: 4px; border-radius: 2px; background: var(--line); overflow: hidden;
 }
 .bar .track span { display: block; height: 100%; width: 0; background: var(--glow); box-shadow: 0 0 10px var(--glow); }
@@ -81,12 +78,12 @@ canvas { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; height: 
 .skip { font: 600 11px/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); opacity: .8; }
 @media (prefers-reduced-motion: reduce) { .caption { transition: none; } }
 .overlay {
-  position: fixed; inset: 0; z-index: 3; display: grid; place-items: center; overflow-y: auto; overscroll-behavior: contain;
+  position: fixed; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overscroll-behavior: contain;
   background: radial-gradient(ellipse at 50% 40%, rgba(24, 26, 38, .6), rgba(5, 6, 10, .93));
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px);
 }
-.card { width: min(100%, 440px); display: grid; gap: 14px; text-align: center; }
+.card { width: min(100%, 440px); display: grid; gap: 14px; text-align: center; margin-block: auto; }
 .eyebrow { font: 700 13px/1 var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
 h1 { font: 800 clamp(44px, 13vw, 76px)/.9 var(--display); margin: 0; color: var(--glow-soft); text-shadow: 0 0 28px rgba(255, 225, 92, .45); text-wrap: balance; }
 h2 { font: 800 clamp(32px, 9vw, 48px)/1 var(--display); margin: 0; text-wrap: balance; }
@@ -176,7 +173,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       <button class="go" id="btnStart" type="button">Start night 1</button>
       <button class="ghost" id="btnSound" type="button">Sound: on</button>
       <button class="ghost" id="btnStory" type="button" hidden>Replay the story</button>
-      <span class="build" id="build">Build 18</span>
+      <span class="build" id="build">Build 19</span>
     </div>
   </div>
 </div>
@@ -245,9 +242,9 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   var cv = document.getElementById("c"), cx = cv.getContext("2d");
   var W = 0, H = 0, S = 0, DPR = 1, bg = null;
   function resize() {
-    if (typeof placeTop === "function" && document.getElementById("hudTime")) try { placeTop(); } catch (e) {}
     var rc = cv.getBoundingClientRect();
     W = Math.round(rc.width) || window.innerWidth; H = Math.round(rc.height) || window.innerHeight; S = Math.min(W, H);
+    try { placeTop(); } catch (e) {}
     DPR = Math.min(window.devicePixelRatio || 1, 3);
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
     cx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -351,32 +348,38 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   try { best = JSON.parse(localStorage.getItem("fireflyJarBest2") || "null"); } catch (e) { best = null; }
   try { cleared = Number(localStorage.getItem("fireflyJarCleared2") || 0) || 0; } catch (e) { cleared = 0; }
 
-  // The Claude app lays its own buttons over the top of the page, so the top band is
-  // kept free of bugs (no reason to tap there), and the score bar sits at the bottom.
   function inset(side) { return parseFloat(getComputedStyle(document.documentElement)["padding" + side]) || 0; }
-  // bugs stay below the completion line, so nothing ever flies under the app's toolbar
-  // Height of the app's toolbar band at the top. Read two ways (the safe-area value the
-  // browser reports, and the padding the app puts on the page) and take the larger, since
-  // the app may provide only one of them.
-  function toolbarTop() {
+  // Space the Claude app takes on each side: its toolbar at the top on the inner screen,
+  // its button column on the right on the cover screen. Read from the safe-area values
+  // and from the padding the app puts on the page, whichever is larger.
+  function appInset(side) {
     var pr = document.getElementById("insetProbe");
-    var envTop = pr ? parseFloat(getComputedStyle(pr).paddingTop) || 0 : 0;
-    return Math.max(envTop, inset("Top"));
+    var env = pr ? parseFloat(getComputedStyle(pr)["padding" + side]) || 0 : 0;
+    return Math.max(env, inset(side));
   }
-  // clock centred in the toolbar row; completion line just under the toolbar
+  function toolbarTop() { return appInset("Top"); }
+  var CLOCK_H = 44;
   function placeTop() {
-    var T = toolbarTop();
-    $("hudTime").style.top = Math.max(6, T * 0.45 - 21) + "px";
-    document.querySelector(".bar .track").style.top = Math.max(56, T + 6) + "px";
+    var T = appInset("Top"), L = appInset("Left"), Rr = appInset("Right"), w = window.innerWidth;
+    var track = document.querySelector(".bar .track"), tm = $("hudTime");
+    track.style.top = (T + 8) + "px"; track.style.left = Math.max(16, L) + "px"; track.style.right = Math.max(16, Rr) + "px";
+    tm.style.top = (T + 20) + "px"; tm.style.left = (L + (w - L - Rr) / 2) + "px";
+    // keep the nests (and the wasps that circle them) inside the playable width
+    NESTS[0].x = Math.min(0.85, xMax() - 0.05); NESTS[1].x = Math.max(0.15, xMin() + 0.05);
   }
-  function topY() { return (Math.max(56, toolbarTop() + 6) + 4 + S * 0.05) / H; }
+  // horizontal limits for bugs: never under the app's side buttons
+  function xMin() { return Math.max(0.04, (appInset("Left") + 22) / (W || window.innerWidth)); }
+  function xMax() { return Math.min(0.96, 1 - (appInset("Right") + 22) / (W || window.innerWidth)); }
+  // bugs stay below the clock
+  function topY() { return (appInset("Top") + 20 + CLOCK_H + 14) / H; }
   function botY() { return Math.min(1 - (inset("Bottom") + 96) / H, 0.86); }
 
   function distTo(nest, x, y) { var dx = (x - nest.x) * W, dy = (y - nest.y) * H; return Math.sqrt(dx * dx + dy * dy); }
   function nearNest(x, y) { for (var k = 0; k < P.nests; k++) if (distTo(NESTS[k], x, y) < S * 0.25) return true; return false; }
   function spawn(kind) {
     var t = topY(), x, y, tries = 0;
-    do { x = 0.08 + Math.random() * 0.84; y = t + Math.random() * (botY() - t); }
+    var x0 = xMin() + 0.04, x1 = xMax() - 0.04;
+    do { x = x0 + Math.random() * (x1 - x0); y = t + Math.random() * (botY() - t); }
     while (kind !== "wasp" && nearNest(x, y) && ++tries < 8);
     var home = P.nests ? Math.floor(Math.random() * P.nests) : -1;
     if (kind === "wasp" && home >= 0) { x = NESTS[home].x + (Math.random() - 0.5) * 0.03; y = NESTS[home].y + 0.03; }
@@ -556,7 +559,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     var wind = 0;
     if (gustOn > 0) { gustOn -= dt; wind = gustDir * P.gust * Math.sin(Math.PI * Math.max(0, gustOn)); }
 
-    var minY = topY(), maxY = botY();
+    var minY = topY(), maxY = botY(), minX = xMin(), maxX = xMax();
     var lit = bugs.filter(function (b) { return b.kind === "fly" && !isDark(b); });
     for (var i = bugs.length - 1; i >= 0; i--) {
       var b = bugs[i];
@@ -593,7 +596,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       }
       b.x += (Math.cos(b.a) * b.sp * S / W + wind) * dt;
       b.y += Math.sin(b.a) * b.sp * S * dt / H;
-      if (b.x < 0.04 || b.x > 0.96) { b.a = Math.PI - b.a; b.x = Math.min(0.96, Math.max(0.04, b.x)); }
+      if (b.x < minX || b.x > maxX) { b.a = Math.PI - b.a; b.x = Math.min(maxX, Math.max(minX, b.x)); }
       if (b.y < minY || b.y > maxY) { b.a = -b.a; b.y = Math.min(maxY, Math.max(minY, b.y)); }
     }
     for (var j = sparks.length - 1; j >= 0; j--) {
@@ -803,7 +806,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       var gather = state === "play" ? 1 - clock / CLOCK : state === "end" ? 1 : 0.1;
       clouds(T, H * 0.5, 0.45 * gather, 0.01, 4, "#15161e");
     } else if (n >= 2) {
-      clouds(T, H * 0.04, 0.35 + n * 0.09, 0.008 + n * 0.006, 7, "#101118");
+      clouds(T, -S * 0.02, 0.35 + n * 0.09, 0.008 + n * 0.006, 7, "#101118");
       if (state === "play" || state === "intro" || state === "end") {
         wx.next -= dt;
         if (wx.next <= 0) { wx.flash = 1; wx.bolt = 0.45 + Math.random() * 0.35; wx.seed = Math.floor(Math.random() * 1e5); wx.next = 3 + Math.random() * (11 - n * 1.5); }
