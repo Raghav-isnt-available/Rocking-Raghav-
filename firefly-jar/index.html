@@ -181,7 +181,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       <button class="go" id="btnStart" type="button">Start night 1</button>
       <button class="ghost" id="btnSound" type="button">Sound: on</button>
       <button class="ghost" id="btnStory" type="button" hidden>Replay the story</button>
-      <span class="build" id="build">Build 23</span>
+      <span class="build" id="build">Build 24</span>
     </div>
     </div>
   </div>
@@ -266,6 +266,11 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       var land = window.innerWidth > window.innerHeight;
       var sw = land ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
       if (sw > w && sw - w < 200) w = sw;
+      // iPhone Duo inner screen in landscape: 2670 px / 3 = 890 pt wide, 626 pt tall.
+      // iOS hands the home-screen app ~810 pt (it keeps the clock column), so force it.
+      if (land && window.innerHeight >= 560 && window.innerHeight <= 640 && w < 890) w = 890;
+      // cover screen held sideways: 2034 px / 3 = 678 pt wide
+      if (land && window.innerHeight >= 430 && window.innerHeight <= 470 && w < 678) w = 678;
     }
     return w;
   }
