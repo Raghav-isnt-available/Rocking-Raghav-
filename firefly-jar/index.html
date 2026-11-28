@@ -113,6 +113,22 @@ h2 { font: 800 clamp(32px, 9vw, 48px)/1 var(--display); margin: 0; text-wrap: ba
 .ladder button.done b { color: var(--glow); }
 .ladder button.on { border-color: var(--glow); box-shadow: inset 0 0 0 1px var(--glow); color: var(--glow-soft); background: rgba(255, 225, 92, 0.08); }
 .ladder button.next { border-color: var(--glow); box-shadow: inset 0 0 0 1px var(--glow); color: var(--glow-soft); }
+/* Solstice Eve on Hard / Ultra: its tile, the HUD pill and history tags turn ember / red */
+.ladder button.hard, .ladder div.hard, .pill.hard { border-color: #ff6a3d; color: #ffb59a; }
+.ladder button.ultra, .ladder div.ultra, .pill.ultra { border-color: #ff3347; color: #ff9aa5; }
+.ladder button.hard b, .ladder div.hard b, .ladder button.ultra b, .ladder div.ultra b { color: inherit; }
+.ladder button.hard.on, .ladder button.hard.next { box-shadow: inset 0 0 0 1px #ff6a3d; background: rgba(255, 106, 61, 0.1); }
+.ladder button.ultra.on, .ladder button.ultra.next { box-shadow: inset 0 0 0 1px #ff3347; background: rgba(255, 51, 71, 0.12); }
+.modes { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; }
+.modes button {
+  font: 700 13px/1 var(--display); color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 999px;
+  padding: 10px 13px 8px; min-height: 38px; cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.modes button[aria-checked="true"] { color: var(--glow-soft); border-color: var(--glow); box-shadow: inset 0 0 0 1px var(--glow); }
+.modes button[data-mode="hard"][aria-checked="true"] { color: #ffb59a; border-color: #ff6a3d; box-shadow: inset 0 0 0 1px #ff6a3d; background: rgba(255, 106, 61, 0.1); }
+.modes button[data-mode="ultra"][aria-checked="true"] { color: #ff9aa5; border-color: #ff3347; box-shadow: inset 0 0 0 1px #ff3347; background: rgba(255, 51, 71, 0.12); }
+.tag.hard { color: #ffb59a; font-weight: 700; }
+.tag.ultra { color: #ff9aa5; font-weight: 700; }
 .ladder-note { font-size: 12.5px; color: var(--muted); margin-top: -6px; }
 .hist { display: grid; gap: 4px; font-size: 13.5px; font-variant-numeric: tabular-nums; text-align: left; }
 .hist-head { font: 700 12px/1 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); text-align: center; margin-bottom: 4px; }
@@ -144,6 +160,7 @@ h2 { font: 800 clamp(32px, 9vw, 48px)/1 var(--display); margin: 0; text-wrap: ba
   .card p { font-size: 13.5px; line-height: 1.38; }
   .rules { font-size: 12.5px; gap: 4px 14px; line-height: 1.3; }
   .ladder button { min-height: 40px; padding: 5px 2px 4px; }
+  .modes button { min-height: 32px; padding: 7px 11px 5px; }
   button.go { padding: 12px 30px 10px; }
   button.ghost { padding: 6px; }
   .btns { gap: 4px; }
@@ -200,7 +217,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       <button class="go" id="btnStart" type="button">Start night 1</button>
       <button class="ghost" id="btnSound" type="button">Sound: on</button>
       <button class="ghost" id="btnStory" type="button" hidden>Replay the story</button>
-      <button class="build" id="build" type="button" aria-label="Build 26. Show screen details">Build 26</button>
+      <button class="build" id="build" type="button" aria-label="Build 27. Show screen details">Build 27</button>
       <span class="diag" id="diag" hidden></span>
     </div>
     </div>
@@ -216,6 +233,11 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     </div>
     <div class="col">
     <div class="ladder" id="ladderIntro"></div>
+    <div class="modes" id="modes" role="radiogroup" aria-label="Solstice Eve difficulty" hidden>
+      <button type="button" role="radio" data-mode="normal">Normal</button>
+      <button type="button" role="radio" data-mode="hard">Hard</button>
+      <button type="button" role="radio" data-mode="ultra">Ultra</button>
+    </div>
     <div class="btns"><button class="go" id="btnGo" type="button">Go</button></div>
     <div class="hist" id="histIntro"></div>
     </div>
@@ -261,8 +283,15 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   // builds from its first night (2) to Solstice Eve's 3-4 s
   var GUST_WINDOW = { 2: [5.5, 7], 3: [4.5, 6], 4: [3.8, 5], 5: [3, 4] };
   function mult(n) { return Math.pow(STEP, n - 1); }
-  function params(n) {
-    var m = mult(n);
+  // Solstice Eve can be made harder on purpose: Hard (×2.50) and Ultra (×3.00) replace its
+  // usual ×2.07. Off by default so nobody lands in it by accident; picked on the night 5
+  // card and remembered on this device.
+  var MODES = { normal: { name: "Normal", m: 0 }, hard: { name: "Hard", m: 2.5 }, ultra: { name: "Ultra", m: 3 } };
+  var MODE = "normal", playMode = "normal"; // playMode: what the night being played was started on
+  try { var savedMode = localStorage.getItem("fireflyJarMode5"); if (MODES.hasOwnProperty(savedMode)) MODE = savedMode; } catch (e) {}
+  function nightMult(n, mode) { var md = MODES[mode || MODE]; return n === NIGHTS && md.m ? md.m : mult(n); }
+  function params(n, mode) {
+    var m = nightMult(n, mode);
     return {
       m: m, speed: BASE.speed * m, life: BASE.life / m, wasp: Math.min(0.5, BASE.wasp * m), miss: BASE.miss * m,
       nests: n >= 4 ? 2 : n >= 2 ? 1 : 0,
@@ -461,8 +490,8 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   var spawnT = 0, goldT = 0, gustT = 0, gustNext = 6, gustDir = 1, gustOn = 0, gustWarn = 0, totalTime = 0;
   var shake = 0, flash = 0, last = 0, cleared = 0, sound = true, ac = null;
   var stats = { misses: 0, eaten: 0, golds: 0 };
-  var best = null;
-  try { best = JSON.parse(localStorage.getItem("fireflyJarBest2") || "null"); } catch (e) { best = null; }
+  // best five-night total, kept separately for each Solstice Eve difficulty
+  var BEST_KEY = { normal: "fireflyJarBest2", hard: "fireflyJarBest2Hard", ultra: "fireflyJarBest2Ultra" };
   try { cleared = Number(localStorage.getItem("fireflyJarCleared2") || 0) || 0; } catch (e) { cleared = 0; }
 
   function inset(side) { return parseFloat(getComputedStyle(document.documentElement)["padding" + side]) || 0; }
@@ -559,7 +588,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   function nextGust() { var w = P.gustWin || [6, 6]; return w[0] + Math.random() * (w[1] - w[0]); }
   function startNight(n) {
     placeTop();
-    night = n; P = params(n);
+    night = n; playMode = n === NIGHTS ? MODE : "normal"; P = params(n, playMode);
     CLOCK = n <= 3 ? 20 : 30;
     bugs = []; sparks = []; texts = []; caught = 0; lives = LIVES; clock = CLOCK;
     spawnT = 0; goldT = 0; gustT = 0; gustNext = nextGust(); gustOn = 0; gustWarn = 0; shake = 0; flash = 0;
@@ -1558,27 +1587,41 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     $("sceneUi").hidden = id !== "scene";
   }
   function nextNight() { return Math.min(NIGHTS, cleared + 1); }
-  function ladder(el, current, pickable) {
+  function ladder(el, current, pickable, mode) {
     var html = "";
+    mode = mode || MODE;
     for (var n = 1; n <= NIGHTS; n++) {
+      var hm = n === NIGHTS && mode !== "normal" ? " " + mode : "";
       if (pickable) {
-        var c = (n === current ? "on " : "") + (n <= cleared ? "done" : n === nextNight() && !current ? "next" : "");
+        var c = (n === current ? "on " : "") + (n <= cleared ? "done" : n === nextNight() && !current ? "next" : "") + hm;
         html += '<button type="button" class="' + c + '" data-night="' + n + '" aria-label="Play night ' + n +
-          (n <= cleared ? ", cleared" : "") + '"><b>' + n + "</b>×" + mult(n).toFixed(2) + "</button>";
+          (hm ? ", " + MODES[mode].name : "") + (n <= cleared ? ", cleared" : "") + '"><b>' + n + "</b>×" + nightMult(n, mode).toFixed(2) + "</button>";
       } else {
-        var cls = n === current ? "on" : n <= cleared ? "done" : "";
-        html += '<div class="' + cls + '"><b>' + n + "</b>×" + mult(n).toFixed(2) + "</div>";
+        var cls = (n === current ? "on" : n <= cleared ? "done" : "") + hm;
+        html += '<div class="' + cls + '"><b>' + n + "</b>×" + nightMult(n, mode).toFixed(2) + "</div>";
       }
     }
     $(el).innerHTML = html;
   }
+  // the Normal / Hard / Ultra row on the Solstice Eve card
+  function renderModes() {
+    [].forEach.call($("modes").querySelectorAll("button[data-mode]"), function (b) {
+      var k = b.getAttribute("data-mode");
+      b.textContent = MODES[k].name + " ×" + nightMult(NIGHTS, k).toFixed(2);
+      b.setAttribute("aria-checked", String(k === MODE));
+    });
+  }
+  // " · Hard ×2.50" for labels of a Solstice Eve played on Hard / Ultra
+  function modeTag(mode) { return mode && mode !== "normal" ? " · " + MODES[mode].name + " ×" + nightMult(NIGHTS, mode).toFixed(2) : ""; }
 
   // ---- Attempt history (last 5 per night, kept on this device) -----------
   var HIST_KEY = "fireflyJarHistory2", history = {};
   try { history = JSON.parse(localStorage.getItem(HIST_KEY) || "{}") || {}; } catch (e) { history = {}; }
   function record(n, won, why) {
     var list = history[n] || [];
-    list.unshift({ won: won, why: why || "", caught: caught, used: Math.round((CLOCK - clock) * 10) / 10, at: Date.now() });
+    var entry = { won: won, why: why || "", caught: caught, used: Math.round((CLOCK - clock) * 10) / 10, at: Date.now() };
+    if (n === NIGHTS && playMode !== "normal") entry.mode = playMode;
+    list.unshift(entry);
     history[n] = list.slice(0, 5);
     try { localStorage.setItem(HIST_KEY, JSON.stringify(history)); } catch (e) {}
   }
@@ -1592,11 +1635,13 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   function renderHistory(el, n, freshTop) {
     var list = history[n] || [];
     if (!list.length) { $(el).innerHTML = '<div class="hist-empty">You haven\'t tried this night yet.</div>'; return; }
-    var bestWin = null;
-    list.forEach(function (a) { if (a.won && (bestWin === null || a.used < bestWin)) bestWin = a.used; });
+    // fastest clear per difficulty (Hard and Ultra runs don't compete with Normal ones)
+    var bestWin = {};
+    list.forEach(function (a) { var md = a.mode || "normal"; if (a.won && (bestWin[md] == null || a.used < bestWin[md])) bestWin[md] = a.used; });
     var rows = list.map(function (a, i) {
-      var what = a.won ? "Cleared in <b>" + a.used.toFixed(1) + "s</b>" + (a.used === bestWin ? " · best" : "")
-                       : a.caught + " / " + GOAL + " · " + (a.why === "stung" ? "stung out" : "time ran out");
+      var md = a.mode || "normal", tag = MODES[md] && md !== "normal" ? ' · <span class="tag ' + md + '">' + MODES[md].name + "</span>" : "";
+      var what = (a.won ? "Cleared in <b>" + a.used.toFixed(1) + "s</b>" + (a.used === bestWin[md] ? " · best" : "")
+                        : a.caught + " / " + GOAL + " · " + (a.why === "stung" ? "stung out" : "time ran out")) + tag;
       return '<div class="hist-row' + (freshTop && i === 0 ? " latest" : "") + '"><span class="' + (a.won ? "ok" : "no") + '">' +
         (a.won ? "✓" : "✗") + "</span><span>" + what + '</span><span class="when">' + ago(a.at) + "</span></div>";
     }).join("");
@@ -1624,7 +1669,10 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     });
   });
   function setHud() {
-    $("hudLevel").textContent = "Night " + night + "/" + NIGHTS;
+    // Solstice Eve on Hard / Ultra says so in the night pill, which turns ember / red
+    var hm = night === NIGHTS ? playMode : "normal";
+    $("hudLevel").textContent = (hm !== "normal" ? MODES[hm].name : "Night") + " " + night + "/" + NIGHTS;
+    $("hudLevel").classList.toggle("hard", hm === "hard"); $("hudLevel").classList.toggle("ultra", hm === "ultra");
     $("hudCaught").textContent = caught + " / " + GOAL;
     var lv = $("hudLives").children;
     for (var i = 0; i < lv.length; i++) lv[i].className = i < lives ? "" : "gone";
@@ -1657,10 +1705,10 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   ];
   function storyHtml(t) { return esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
 
-  function intro(n) {
+  function intro(n, keepFocus) {
     var p = params(n), st = STORY[n - 1];
     night = n; state = "intro"; P = p;
-    $("introEyebrow").textContent = "Night " + n + " of " + NIGHTS + " · ×" + p.m.toFixed(2);
+    $("introEyebrow").textContent = "Night " + n + " of " + NIGHTS + " · ×" + p.m.toFixed(2) + (n === NIGHTS && MODE !== "normal" ? " · " + MODES[MODE].name : "");
     $("introTitle").textContent = st.name;
     var notes = ["glow " + p.life.toFixed(1) + "s", "wasps " + Math.round(p.wasp * 100) + "%"];
     if (p.gust) notes.push("gusts every " + p.gustWin[0] + "–" + p.gustWin[1] + "s");
@@ -1669,10 +1717,19 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     $("introText").innerHTML = storyHtml(st.text) +
       '<span class="notes">' + notes.map(function (x) { return "<span>" + x + "</span>"; }).join(" · ") + "</span>";
     ladder("ladderIntro", n, true);
+    $("modes").hidden = n !== NIGHTS; if (n === NIGHTS) renderModes();
     renderHistory("histIntro", n, false);
     show("screenIntro");
-    setTimeout(function () { $("btnGo").focus(); }, 0);
+    if (!keepFocus) setTimeout(function () { $("btnGo").focus(); }, 0);
   }
+  // picking a difficulty redraws the card: its multiplier, the numbers in the notes, the tile
+  $("modes").addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest("button[data-mode]");
+    if (!b || state !== "intro" || night !== NIGHTS) return;
+    MODE = b.getAttribute("data-mode");
+    try { localStorage.setItem("fireflyJarMode5", MODE); } catch (e2) {}
+    intro(NIGHTS, true);
+  });
   function esc(t) { return t.replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
 
 
@@ -1687,11 +1744,13 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     }
     var final = won && night === NIGHTS && runFull;
     var line = "<div><b>" + stats.misses + "</b>grabs at air</div><div><b>" + stats.eaten + "</b>lost to wasps</div><div><b>" + stats.golds + "</b>golden ones</div>";
+    var tag = night === NIGHTS ? modeTag(playMode) : "";
     if (final) {
-      var t = Math.round(totalTime);
+      var t = Math.round(totalTime), bkey = BEST_KEY[playMode] || BEST_KEY.normal, best = null;
+      try { best = JSON.parse(localStorage.getItem(bkey) || "null"); } catch (e) { best = null; }
       var isBest = best === null || t < best;
-      if (isBest) { best = t; try { localStorage.setItem("fireflyJarBest2", String(t)); } catch (e) {} }
-      $("endEyebrow").textContent = "Solstice · all five nights";
+      if (isBest) { best = t; try { localStorage.setItem(bkey, String(t)); } catch (e) {} }
+      $("endEyebrow").textContent = "Solstice · all five nights" + tag;
       $("endTitle").textContent = "The lantern is lit";
       $("endText").textContent = STORY[4].won + " " + (isBest ? "Your fastest summer yet: " : "This summer took ") + t + "s (best " + best + "s).";
       $("endStats").innerHTML = line;
@@ -1699,7 +1758,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       $("btnEnd").onclick = function () { totalTime = 0; runFull = true; intro(1); };
       beep(660, 0.12, "sine", 0.22); setTimeout(function () { beep(880, 0.25, "sine", 0.22); }, 130);
     } else if (won && night === NIGHTS) {
-      $("endEyebrow").textContent = "Solstice Eve cleared";
+      $("endEyebrow").textContent = "Solstice Eve cleared" + tag;
       $("endTitle").textContent = "The lantern is lit";
       $("endText").textContent = STORY[4].won + " Play the whole summer from the first night to set a best time.";
       $("endStats").innerHTML = line;
@@ -1713,7 +1772,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       $("btnEnd").textContent = "On to night " + (night + 1);
       $("btnEnd").onclick = function () { var n = night; playScene("s" + n, function () { intro(n + 1); }); };
     } else {
-      $("endEyebrow").textContent = STORY[night - 1].name;
+      $("endEyebrow").textContent = STORY[night - 1].name + tag;
       $("endTitle").textContent = why === "stung" ? "Stung out" : "The moon set";
       $("endText").textContent = why === "stung"
         ? "Three stings, and Grandma drags you inside before the swarm can follow you home. Take the fireflies the wasps aren't near."
@@ -1763,7 +1822,8 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       $("introEyebrow").textContent = "Paused · Night " + night;
       $("introTitle").textContent = caught + " / " + GOAL;
       $("introText").innerHTML = "<b>" + Math.ceil(clock) + "s</b> left. Tap to keep going.";
-      ladder("ladderIntro", night);
+      ladder("ladderIntro", night, false, playMode);
+      $("modes").hidden = true; // no switching difficulty halfway through a night
       $("btnGo").onclick = function () { state = "play"; show(null); last = 0; $("btnGo").onclick = goHandler; };
       show("screenIntro");
     }
@@ -1771,7 +1831,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 
   // read-only peek used by automated play-tests; harmless for players
   window.__fireflyPeek = function () { return { state: state, gustWarn: gustWarn, caught: caught, lives: lives, clock: clock, W: W, H: H, VW: VW, OX: OX, strip: STRIP, band: BAND,
-    shake: shake, flash: flash, gustOn: gustOn, nests: NESTS.map(function (n) { return [n.x, n.y]; }), xMin: xMin(), xMax: xMax(), botY: botY(), err: lastErr,
+    shake: shake, flash: flash, gustOn: gustOn, m: P.m, life: P.life, mode: MODE, playMode: playMode, nests: NESTS.map(function (n) { return [n.x, n.y]; }), xMin: xMin(), xMax: xMax(), botY: botY(), err: lastErr,
     bugs: bugs.map(function (b) { return { kind: b.kind, x: b.x, y: b.y, dark: isDark(b), age: b.age }; }) }; };
 
   window.__fireflyScene = function (key) { delete seen[key]; playScene(key, titleScreen); }; // play-test hook
