@@ -18,7 +18,8 @@ head = """<!doctype html>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html,body{background:#06070c;margin:0;width:100%;overflow:hidden}[hidden]{display:none!important}
 canvas{left:0!important;top:0!important;right:0!important;bottom:0!important;width:100vw!important;height:100lvh!important}
 .overlay{--sym:max(16px,env(safe-area-inset-left,0px),env(safe-area-inset-right,0px));padding-left:var(--sym)!important;padding-right:var(--sym)!important}
-.hud{padding-left:16px!important;padding-right:16px!important}</style>
+.hud{padding-left:16px!important;padding-right:16px!important}
+.overlay,.hud,.scene-ui,.bar{right:calc(-1 * var(--extra-w,0px))!important}</style>
 </head>
 <body>
 """

@@ -181,7 +181,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       <button class="go" id="btnStart" type="button">Start night 1</button>
       <button class="ghost" id="btnSound" type="button">Sound: on</button>
       <button class="ghost" id="btnStory" type="button" hidden>Replay the story</button>
-      <span class="build" id="build">Build 22</span>
+      <span class="build" id="build">Build 23</span>
     </div>
     </div>
   </div>
@@ -258,9 +258,23 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   // the meadow; nothing jumps or resets.
   var cv = document.getElementById("c"), cx = cv.getContext("2d");
   var W = 0, H = 0, S = 0, DPR = 1, bg = null;
+  // In the home-screen app, iOS can report a narrower width than the screen (it leaves
+  // out the clock/battery column), so measure the real screen and size everything to it.
+  function fullWidth() {
+    var w = window.innerWidth;
+    if (typeof STANDALONE !== "undefined" && STANDALONE && window.screen) {
+      var land = window.innerWidth > window.innerHeight;
+      var sw = land ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+      if (sw > w && sw - w < 200) w = sw;
+    }
+    return w;
+  }
   function resize() {
+    var fw = fullWidth(), extra = fw - window.innerWidth;
+    cv.style.width = fw + "px";
+    document.documentElement.style.setProperty("--extra-w", extra + "px");
     var rc = cv.getBoundingClientRect();
-    W = Math.round(rc.width) || window.innerWidth; H = Math.round(rc.height) || window.innerHeight; S = Math.min(W, H);
+    W = Math.round(rc.width) || fw; H = Math.round(rc.height) || window.innerHeight; S = Math.min(W, H);
     try { placeTop(); } catch (e) {}
     DPR = Math.min(window.devicePixelRatio || 1, 3);
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
@@ -377,7 +391,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   function toolbarTop() { return appInset("Top"); }
   var CLOCK_H = 44;
   function placeTop() {
-    var T = appInset("Top"), L = appInset("Left"), Rr = appInset("Right"), w = window.innerWidth;
+    var T = appInset("Top"), L = appInset("Left"), Rr = appInset("Right"), w = W || window.innerWidth;
     var track = document.querySelector(".bar .track"), tm = $("hudTime");
     // clock right at the top of the game, the completion line running behind its middle
     if (STANDALONE) { L = 0; Rr = 0; }   // home-screen app: centre on the whole screen
@@ -394,7 +408,8 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   // only keep out of the corner where the phone shows its clock and battery.
   function inStatusCorner(x, y) {
     var Rr = appInset("Right"), T = appInset("Top");
-    if (Rr > 0) return x > 1 - (Rr + 22) / W && y < Math.max(0.3, 160 / H);
+    var side = Math.max(Rr, W - window.innerWidth, 0);
+    if (side > 0) return x > 1 - (side + 22) / W && y < Math.max(0.3, 160 / H);
     if (T > 0) return y < (T + 10) / H && x > 0.75;
     return false;
   }
