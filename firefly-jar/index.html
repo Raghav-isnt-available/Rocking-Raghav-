@@ -8,6 +8,7 @@
    One deliberate look (a summer night), so a single dark palette rather than light/dark themes. */
 :root {
   --night: #07080e;
+  --chrome: #06070c; /* the Claude app's own bar colour, measured from screenshots */
   --dusk: #10131f;
   --glow: #ffe15c;
   --glow-soft: #fff4b0;
@@ -53,11 +54,11 @@ canvas { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; height: 
    column down the right side on the cover screen). */
 .bar { position: fixed; left: 0; right: 0; top: 0; height: 0; z-index: 2; pointer-events: none; }
 .bar .time {
-  position: absolute; left: 50%; transform: translateX(-50%); top: 20px;
+  position: absolute; left: 50%; transform: translateX(-50%); top: 6px; z-index: 1; background: #0a0b12;
   font: 800 clamp(20px, 5vw, 26px)/1 var(--display); font-variant-numeric: tabular-nums; min-width: 2.6em; text-align: center;
 }
 .bar .track {
-  position: absolute; left: 16px; right: 16px; top: 8px;
+  position: absolute; left: 16px; right: 16px; top: 25px;
   height: 4px; border-radius: 2px; background: var(--line); overflow: hidden;
 }
 .bar .track span { display: block; height: 100%; width: 0; background: var(--glow); box-shadow: 0 0 10px var(--glow); }
@@ -79,11 +80,21 @@ canvas { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; height: 
 @media (prefers-reduced-motion: reduce) { .caption { transition: none; } }
 .overlay {
   position: fixed; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; overflow-y: auto; overscroll-behavior: contain;
-  background: radial-gradient(ellipse at 50% 40%, rgba(24, 26, 38, .6), rgba(5, 6, 10, .93));
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: calc(env(safe-area-inset-top, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px);
+  background:
+    linear-gradient(to bottom, var(--chrome) 0, var(--chrome) var(--ins-t, 0px), rgba(6, 7, 12, 0) calc(var(--ins-t, 0px) + 64px)),
+    radial-gradient(ellipse at 50% 40%, rgba(24, 26, 38, .6), rgba(5, 6, 10, .93));
+  padding-left: max(16px, var(--ins-l, env(safe-area-inset-left, 0px))); padding-right: max(16px, var(--ins-r, env(safe-area-inset-right, 0px)));
+  padding-block: calc(var(--ins-t, env(safe-area-inset-top, 0px)) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px);
 }
 .card { width: min(100%, 440px); display: grid; gap: 14px; text-align: center; margin-block: auto; }
+.col { display: grid; gap: 14px; min-width: 0; align-content: start; }
+/* Wide but short (the unfolded screen in landscape, under the app's toolbar): two columns,
+   story on the left, controls on the right, so nothing has to scroll under the toolbar. */
+@media (min-width: 700px) and (max-height: 760px) and (min-aspect-ratio: 5/4) {
+  .card { width: min(100%, 900px); grid-template-columns: 1fr 1fr; column-gap: 40px; align-items: center; }
+  .card h1 { font-size: clamp(40px, 7vw, 60px); }
+  .card p { max-width: 40ch; }
+}
 .eyebrow { font: 700 13px/1 var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
 h1 { font: 800 clamp(44px, 13vw, 76px)/.9 var(--display); margin: 0; color: var(--glow-soft); text-shadow: 0 0 28px rgba(255, 225, 92, .45); text-wrap: balance; }
 h2 { font: 800 clamp(32px, 9vw, 48px)/1 var(--display); margin: 0; text-wrap: balance; }
@@ -157,6 +168,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 
 <div class="overlay" id="screenTitle">
   <div class="card">
+    <div class="col">
     <div class="eyebrow">Five summer nights on Wren Hill</div>
     <h1>Firefly Jar</h1>
     <p>The old lantern on Wren Hill has to be fed before the solstice. Each night, catch <b>20</b> before the moon sets, about <b>30 seconds</b>. Three stings and you're done for the night.</p>
@@ -167,40 +179,51 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       <span><i class="dot miss"></i>Grabbing at nothing costs time.</span>
       <span><i class="dot gust">☾</i>Each night brings something new, and the meadow gets a little faster.</span>
     </div>
+    </div>
+    <div class="col">
     <div class="ladder" id="ladderTitle"></div>
     <div class="ladder-note">Tap any night to jump straight to it.</div>
     <div class="btns">
       <button class="go" id="btnStart" type="button">Start night 1</button>
       <button class="ghost" id="btnSound" type="button">Sound: on</button>
       <button class="ghost" id="btnStory" type="button" hidden>Replay the story</button>
-      <span class="build" id="build">Build 19</span>
+      <span class="build" id="build">Build 20</span>
+    </div>
     </div>
   </div>
 </div>
 
 <div class="overlay" id="screenIntro" hidden>
   <div class="card">
+    <div class="col">
     <div class="eyebrow" id="introEyebrow">Night 2 of 5</div>
     <h2 id="introTitle">Difficulty ×1.20</h2>
     <p id="introText"></p>
+    </div>
+    <div class="col">
     <div class="ladder" id="ladderIntro"></div>
     <div class="btns"><button class="go" id="btnGo" type="button">Go</button></div>
     <div class="hist" id="histIntro"></div>
+    </div>
   </div>
 </div>
 
 <div class="overlay" id="screenEnd" hidden>
   <div class="card">
+    <div class="col">
     <div class="eyebrow" id="endEyebrow"></div>
     <h2 id="endTitle"></h2>
     <p id="endText"></p>
     <div class="stats" id="endStats"></div>
+    </div>
+    <div class="col">
     <div class="ladder" id="ladderEnd"></div>
     <div class="btns">
       <button class="go" id="btnEnd" type="button">Next</button>
       <button class="ghost" id="btnMenu" type="button">Back to start</button>
     </div>
     <div class="hist" id="histEnd"></div>
+    </div>
   </div>
 </div>
 
@@ -275,7 +298,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   function paintBackground() {
     var A = layer(), g = A[1]; skyCv = A[0];
     var sky = g.createLinearGradient(0, 0, 0, H);
-    sky.addColorStop(0, "#040509"); sky.addColorStop(0.65, "#10131f"); sky.addColorStop(1, "#171a29");
+    sky.addColorStop(0, "#06070c"); sky.addColorStop(0.65, "#10131f"); sky.addColorStop(1, "#171a29");
     g.fillStyle = sky; g.fillRect(0, 0, W, H);
     var r = rng(7);
     for (var i = 0; i < Math.round(W * H / 2600); i++) {
@@ -362,8 +385,11 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   function placeTop() {
     var T = appInset("Top"), L = appInset("Left"), Rr = appInset("Right"), w = window.innerWidth;
     var track = document.querySelector(".bar .track"), tm = $("hudTime");
-    track.style.top = (T + 8) + "px"; track.style.left = Math.max(16, L) + "px"; track.style.right = Math.max(16, Rr) + "px";
-    tm.style.top = (T + 20) + "px"; tm.style.left = (L + (w - L - Rr) / 2) + "px";
+    // clock right at the top of the game, the completion line running behind its middle
+    tm.style.top = (T + 6) + "px"; tm.style.left = (L + (w - L - Rr) / 2) + "px";
+    track.style.top = (T + 6 + CLOCK_H / 2 - 2) + "px"; track.style.left = Math.max(16, L) + "px"; track.style.right = Math.max(16, Rr) + "px";
+    var rs = document.documentElement.style;
+    rs.setProperty("--ins-t", T + "px"); rs.setProperty("--ins-l", L + "px"); rs.setProperty("--ins-r", Rr + "px");
     // keep the nests (and the wasps that circle them) inside the playable width
     NESTS[0].x = Math.min(0.85, xMax() - 0.05); NESTS[1].x = Math.max(0.15, xMin() + 0.05);
   }
@@ -371,7 +397,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   function xMin() { return Math.max(0.04, (appInset("Left") + 22) / (W || window.innerWidth)); }
   function xMax() { return Math.min(0.96, 1 - (appInset("Right") + 22) / (W || window.innerWidth)); }
   // bugs stay below the clock
-  function topY() { return (appInset("Top") + 20 + CLOCK_H + 14) / H; }
+  function topY() { return (appInset("Top") + 6 + CLOCK_H + 14) / H; }
   function botY() { return Math.min(1 - (inset("Bottom") + 96) / H, 0.86); }
 
   function distTo(nest, x, y) { var dx = (x - nest.x) * W, dy = (y - nest.y) * H; return Math.sqrt(dx * dx + dy * dy); }
@@ -643,7 +669,18 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       v.addColorStop(0, "rgba(120,6,10,0)"); v.addColorStop(1, "rgba(120,6,10," + (0.7 * flash) + ")");
       cx.fillStyle = v; cx.fillRect(0, 0, W, H);
     }
+    topFade();
     cx.restore();
+  }
+
+  // Melt the top of the picture into the app's bar colour so there's no visible seam
+  // between the Claude app's toolbar (or the cover screen's top bar) and the game.
+  function topFade() {
+    var T = appInset("Top"), h = Math.max(44, S * 0.1);
+    cx.fillStyle = "#06070c"; if (T > 0) cx.fillRect(0, 0, W, T);
+    var g = cx.createLinearGradient(0, T, 0, T + h);
+    g.addColorStop(0, "rgba(6,7,12,1)"); g.addColorStop(1, "rgba(6,7,12,0)");
+    cx.fillStyle = g; cx.fillRect(0, T, W, h);
   }
 
   function drawNest(nest, t) {
@@ -912,6 +949,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
     if (scene.t >= scene.realDur) { endScene(); return; }
     cx.save(); cx.setTransform(DPR, 0, 0, DPR, 0, 0);
     scene.def.draw(sceneTime(scene.t), T);
+    topFade();
     cx.restore();
     var c = "", caps = scene.caps;
     for (var i = 0; i < caps.length; i++) if (scene.t >= caps[i][0] && scene.t < caps[i][1]) c = caps[i][2];
