@@ -44,6 +44,9 @@ canvas { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; height: 
 .lives i { width: 10px; height: 10px; border-radius: 50%; background: var(--glow); box-shadow: 0 0 8px var(--glow); }
 .lives i.gone { background: transparent; box-shadow: none; border: 1.5px solid var(--muted); opacity: .5; }
 .time.low { color: var(--wasp); }
+.build { font: 500 11px/1 var(--body); color: var(--muted); opacity: .6; letter-spacing: .06em; }
+#insetProbe { position: fixed; left: 0; top: 0; width: 0; height: 0; visibility: hidden; pointer-events: none;
+  padding-top: env(safe-area-inset-top, 0px); }
 /* Clock top-centre, catches and lives bottom-centre: the middle of each edge is where
    a thumb is least likely to sit. Inside the Claude app the top safe area is the app's
    toolbar (close button left, button pill right), so the clock sits centred in that
@@ -139,6 +142,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 
 <canvas id="c" aria-label="Meadow with fireflies. Tap lit fireflies to catch them; avoid wasps."></canvas>
 
+<div id="insetProbe" aria-hidden="true"></div>
 <div class="bar" id="bar" hidden>
   <span class="pill time" id="hudTime" aria-label="Seconds left">30</span>
   <div class="track" aria-hidden="true"><span id="barFill"></span></div>
@@ -172,6 +176,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
       <button class="go" id="btnStart" type="button">Start night 1</button>
       <button class="ghost" id="btnSound" type="button">Sound: on</button>
       <button class="ghost" id="btnStory" type="button" hidden>Replay the story</button>
+      <span class="build" id="build">Build 16</span>
     </div>
   </div>
 </div>
@@ -240,6 +245,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   var cv = document.getElementById("c"), cx = cv.getContext("2d");
   var W = 0, H = 0, S = 0, DPR = 1, bg = null;
   function resize() {
+    if (typeof placeTop === "function" && document.getElementById("hudTime")) try { placeTop(); } catch (e) {}
     var rc = cv.getBoundingClientRect();
     W = Math.round(rc.width) || window.innerWidth; H = Math.round(rc.height) || window.innerHeight; S = Math.min(W, H);
     DPR = Math.min(window.devicePixelRatio || 1, 3);
@@ -349,7 +355,21 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   // kept free of bugs (no reason to tap there), and the score bar sits at the bottom.
   function inset(side) { return parseFloat(getComputedStyle(document.documentElement)["padding" + side]) || 0; }
   // bugs stay below the completion line, so nothing ever flies under the app's toolbar
-  function topY() { return (Math.max(56, inset("Top") + 6) + 4 + S * 0.05) / H; }
+  // Height of the app's toolbar band at the top. Read two ways (the safe-area value the
+  // browser reports, and the padding the app puts on the page) and take the larger, since
+  // the app may provide only one of them.
+  function toolbarTop() {
+    var pr = document.getElementById("insetProbe");
+    var envTop = pr ? parseFloat(getComputedStyle(pr).paddingTop) || 0 : 0;
+    return Math.max(envTop, inset("Top"));
+  }
+  // clock centred in the toolbar row; completion line just under the toolbar
+  function placeTop() {
+    var T = toolbarTop();
+    $("hudTime").style.top = Math.max(6, T * 0.45 - 21) + "px";
+    document.querySelector(".bar .track").style.top = Math.max(56, T + 6) + "px";
+  }
+  function topY() { return (Math.max(56, toolbarTop() + 6) + 4 + S * 0.05) / H; }
   function botY() { return Math.min(1 - (inset("Bottom") + 96) / H, 0.86); }
 
   function distTo(nest, x, y) { var dx = (x - nest.x) * W, dy = (y - nest.y) * H; return Math.sqrt(dx * dx + dy * dy); }
@@ -378,6 +398,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 
   function nextGust() { var w = P.gustWin || [6, 6]; return w[0] + Math.random() * (w[1] - w[0]); }
   function startNight(n) {
+    placeTop();
     night = n; P = params(n);
     bugs = []; sparks = []; texts = []; caught = 0; lives = LIVES; clock = CLOCK;
     spawnT = 0; goldT = 0; gustT = 0; gustNext = nextGust(); gustOn = 0; gustWarn = 0; shake = 0; flash = 0;
