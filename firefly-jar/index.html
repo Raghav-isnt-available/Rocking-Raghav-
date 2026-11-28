@@ -34,20 +34,23 @@ canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; t
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px;
   font: 700 clamp(15px, 3.6vw, 20px)/1 var(--display); font-variant-numeric: tabular-nums;
 }
-.hud > div { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .pill { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px 6px; }
 .lives { display: flex; gap: 5px; }
 .lives i { width: 10px; height: 10px; border-radius: 50%; background: var(--glow); box-shadow: 0 0 8px var(--glow); }
 .lives i.gone { background: transparent; box-shadow: none; border: 1.5px solid var(--muted); opacity: .5; }
 .time.low { color: var(--wasp); }
-.bar { position: fixed; left: 0; right: 0; z-index: 2; pointer-events: none;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 58px);
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.bar div { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
-.bar span { display: block; height: 100%; width: 0; background: var(--glow); box-shadow: 0 0 10px var(--glow); }
+/* Clock top-centre, catches and lives bottom-centre: the middle of each edge is where
+   a thumb is least likely to sit. The completion line runs under the clock. */
+.bar { position: fixed; left: 0; right: 0; top: 0; z-index: 2; pointer-events: none;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; justify-items: center; gap: 8px; }
+.bar .time { font: 800 clamp(20px, 5vw, 26px)/1 var(--display); font-variant-numeric: tabular-nums; min-width: 2.6em; text-align: center; }
+.bar .track { width: 100%; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.bar .track span { display: block; height: 100%; width: 0; background: var(--glow); box-shadow: 0 0 10px var(--glow); }
 
 .scene-ui {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; pointer-events: none;
@@ -126,11 +129,15 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
 
 <canvas id="c" aria-label="Meadow with fireflies. Tap lit fireflies to catch them; avoid wasps."></canvas>
 
-<div class="hud" id="hud" hidden>
-  <div><span class="pill" id="hudLevel">Level 1</span><span class="pill" id="hudCaught">0 / 15</span></div>
-  <div><span class="pill lives" id="hudLives"><i></i><i></i><i></i></span><span class="pill time" id="hudTime">30</span></div>
+<div class="bar" id="bar" hidden>
+  <span class="pill time" id="hudTime" aria-label="Seconds left">30</span>
+  <div class="track" aria-hidden="true"><span id="barFill"></span></div>
 </div>
-<div class="bar" id="bar" hidden><div><span id="barFill"></span></div></div>
+<div class="hud" id="hud" hidden>
+  <span class="pill" id="hudLevel">Night 1/5</span>
+  <span class="pill" id="hudCaught" aria-label="Fireflies caught">0 / 20</span>
+  <span class="pill lives" id="hudLives" aria-label="Lives left"><i></i><i></i><i></i></span>
+</div>
 
 <div class="scene-ui" id="sceneUi" hidden>
   <p class="caption off" id="caption"></p>
@@ -330,7 +337,7 @@ button:focus-visible { outline: 3px solid var(--glow-soft); outline-offset: 3px;
   // The Claude app lays its own buttons over the top of the page, so the top band is
   // kept free of bugs (no reason to tap there), and the score bar sits at the bottom.
   function inset(side) { return parseFloat(getComputedStyle(document.documentElement)["padding" + side]) || 0; }
-  function topY() { return Math.max((inset("Top") + 84) / H, 0.14); }
+  function topY() { return Math.max((inset("Top") + 96) / H, 0.15); }  // below the clock and the app's buttons
   function botY() { return Math.min(1 - (inset("Bottom") + 96) / H, 0.86); }
 
   function distTo(nest, x, y) { var dx = (x - nest.x) * W, dy = (y - nest.y) * H; return Math.sqrt(dx * dx + dy * dy); }
